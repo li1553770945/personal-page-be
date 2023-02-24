@@ -8,11 +8,16 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/hertz-contrib/sessions"
 	"github.com/hertz-contrib/sessions/cookie"
+	"personal-page-be/biz/container"
 	"time"
 )
 
+var App *container.Container
+
 func main() {
-	h := server.Default(server.WithExitWaitTime(3 * time.Second))
+	App = container.GetContainer("conf/config.yaml")
+
+	h := server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address))
 	store := cookie.NewStore([]byte("secret"))
 	h.Use(sessions.New("user", store))
 	register(h)

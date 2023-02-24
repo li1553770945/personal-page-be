@@ -10,10 +10,16 @@ type DatabaseConfig struct {
 	Password string `yaml:"password"`
 	Database string `yaml:"database"`
 	Address  string `yaml:"address"`
+	Port     int    `yaml:"port"`
+}
+
+type HttpConfig struct {
+	Address string `yaml:"address"`
 }
 
 type Config struct {
 	DatabaseConfig DatabaseConfig `yaml:"database"`
+	HttpConfig     HttpConfig     `yaml:"http"`
 }
 
 func InitConfig(path string) *Config {

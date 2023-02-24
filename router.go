@@ -4,17 +4,16 @@ package main
 
 import (
 	"github.com/cloudwego/hertz/pkg/app/server"
-	handler "personal-page-be/biz/handler"
 	"personal-page-be/biz/middlewire"
 )
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
-	r.GET("/ping", append(middlewire.UserMiddleware(), handler.Ping)...)
-	r.GET("/file", handler.DownloadFile)
-	r.GET("/file-attachment", handler.FileAttachment)
+	api := r.Group("/api")
+	{
+		api.POST("/login", App.UserService.Login)
+		api.GET("/logout", App.UserService.Logout)
+		api.GET("/user-info", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
+	}
 
-	r.POST("/login", handler.Login)
-	r.GET("/logout", handler.Logout)
-	// your code ...
 }

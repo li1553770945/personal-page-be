@@ -1,13 +1,10 @@
-package model
+package domain
 
 import "gorm.io/gorm"
 
-type User struct {
+type UserEntity struct {
 	gorm.Model
 	Username string
 	Nickname string
-	password string
+	Password string
 }
-
-
-func GetUser
