@@ -1,0 +1,10 @@
+database:
+  username: ""
+  password: ""
+  database: ""
+  address:  ""
+http:
+  listen-address: "0.0.0.0:8000"
+  mode: "release"
+log:
+  level: "info"
