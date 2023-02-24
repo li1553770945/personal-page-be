@@ -14,6 +14,8 @@ func customizedRegister(r *server.Hertz) {
 		api.POST("/login", App.UserService.Login)
 		api.GET("/logout", App.UserService.Logout)
 		api.GET("/user-info", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
+		api.POST("/generate-activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
+		api.POST("register", App.UserService.Register)
 	}
 
 }

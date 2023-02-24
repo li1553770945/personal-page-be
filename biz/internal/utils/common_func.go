@@ -1,8 +1,14 @@
 package utils
 
-import "crypto/sha256"
+import (
+	"math/rand"
+)
 
-func Sha256(str string) string {
-	b := sha256.Sum256([]byte(str))
-	return string(b[:])
+func RandSeq(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

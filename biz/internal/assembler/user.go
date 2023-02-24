@@ -1,15 +1,14 @@
 package assembler
 
-import "personal-page-be/biz/internal/domain"
+import (
+	"personal-page-be/biz/internal/domain"
+	"personal-page-be/biz/internal/dto"
+)
 
-type UserDTO struct {
-	Username string `json:"username"`
-	Nickname string `json:"nickname"`
-}
-
-func UserEntityToDTO(user *domain.UserEntity) *UserDTO {
-	return &UserDTO{
+func UserEntityToDTO(user *domain.UserEntity) *dto.UserDTO {
+	return &dto.UserDTO{
 		Username: user.Username,
 		Nickname: user.Nickname,
+		Role:     user.Role,
 	}
 }

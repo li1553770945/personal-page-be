@@ -14,5 +14,11 @@ func (Repo *Repository) FindUser(username string) (*domain.UserEntity, error) {
 }
 
 func (Repo *Repository) SaveUser(user *domain.UserEntity) error {
-	return nil
+	if user.ID == 0 {
+		err := Repo.DB.Create(&user).Error
+		return err
+	} else {
+		err := Repo.DB.Save(&user).Error
+		return err
+	}
 }
