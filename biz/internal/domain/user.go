@@ -4,7 +4,7 @@ import "gorm.io/gorm"
 
 type UserEntity struct {
 	gorm.Model
-	Username     string `vd:"len($)>5"`
+	Username     string `vd:"len($)>5" gorm:"index:username_idx,unique"`
 	Nickname     string
 	Password     string
 	Role         string
