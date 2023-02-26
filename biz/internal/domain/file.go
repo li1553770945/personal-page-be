@@ -6,7 +6,7 @@ type FileEntity struct {
 	gorm.Model
 	User     UserEntity
 	UserID   int
-	FileName string
-	FileKey  string
-	Count    int
+	FileName string `json:"file_name"`
+	FileKey  string `json:"file_key"`
+	Count    int    `json:"count"`
 }

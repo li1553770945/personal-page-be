@@ -118,9 +118,6 @@ func (s *FileService) getFileInfo(fileKey string) (int, string, *domain.FileEnti
 	if fileEntity.ID == 0 {
 		return 4004, "未找到相关key的文件", nil
 	}
-	if !Exists(fmt.Sprintf("./file/%s", fileEntity.FileKey)) {
-		return 4004, "文件已被删除", nil
-	}
 
 	return 0, "", fileEntity
 }
@@ -145,6 +142,13 @@ func (s *FileService) DownloadFile(ctx context.Context, c *app.RequestContext) {
 	if code == 0 {
 
 		filePath := fmt.Sprintf("./file/%s", data.FileKey)
+		if !Exists(fmt.Sprintf(filePath)) {
+			c.JSON(consts.StatusOK, utils.H{
+				"code": 4004,
+				"msg":  "文件记录存在，但文件数据已被删除",
+			})
+			return
+		}
 		c.FileAttachment(filePath, data.FileName)
 
 		if data.Count > 0 {
@@ -216,6 +220,9 @@ func (s *FileService) removeFile(entity *domain.FileEntity) error {
 	err := s.Repo.RemoveFile(int(entity.ID))
 	if err != nil {
 		return err
+	}
+	if !Exists(fmt.Sprintf("./file/%s", entity.FileKey)) {
+		return nil
 	}
 	filePath := fmt.Sprintf("./file/%s", entity.FileKey)
 	return os.Remove(filePath)

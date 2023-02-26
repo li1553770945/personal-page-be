@@ -137,7 +137,7 @@ func (s *UserService) GenerateActivateCode(ctx context.Context, c *app.RequestCo
 		})
 		return
 	}
-	if findUser.ID != 0 {
+	if findUser.ID != 0 && findUser.IsActivate == true {
 		c.JSON(consts.StatusOK, utils.H{
 			"code": 4003,
 			"msg":  "用户名已被注册",
@@ -145,13 +145,20 @@ func (s *UserService) GenerateActivateCode(ctx context.Context, c *app.RequestCo
 		return
 	}
 
-	RegisterUser := domain.UserEntity{
-		Username:     registerUsername,
-		IsActivate:   false,
-		CanUse:       true,
-		ActivateCode: U.RandSeq(10),
+	var RegisterUser *domain.UserEntity
+	if findUser.ID != 0 {
+		RegisterUser = findUser
+		RegisterUser.ActivateCode = U.RandSeq(10)
+	} else {
+		RegisterUser = &domain.UserEntity{
+			Username:     registerUsername,
+			IsActivate:   false,
+			CanUse:       true,
+			ActivateCode: U.RandSeq(10),
+		}
 	}
-	err = s.Repo.SaveUser(&RegisterUser)
+
+	err = s.Repo.SaveUser(RegisterUser)
 	if err != nil {
 		c.JSON(consts.StatusOK, utils.H{
 			"code": "5001",

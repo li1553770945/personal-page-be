@@ -14,5 +14,5 @@ type GenerateActivateCodeReq struct {
 
 type RegisterReq struct {
 	domain.UserEntity
-	ActivateCode string `json:"activate-code" vd:"len($)>5"`
+	ActivateCode string `json:"activate_code" vd:"len($)>5"`
 }
