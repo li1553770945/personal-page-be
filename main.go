@@ -17,7 +17,7 @@ var App *container.Container
 func main() {
 	App = container.GetContainer("conf/config.yaml")
 
-	h := server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address))
+	h := server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
 	store := cookie.NewStore([]byte("secret"))
 	h.Use(sessions.New("user", store))
 	register(h)

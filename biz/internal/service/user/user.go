@@ -36,6 +36,13 @@ func (s *UserService) Login(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
+	if !findUser.IsActivate {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "用户未注册激活，请注册后使用",
+		})
+		return
+	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(user.Password))
 	if findUser.ID == 0 || err != nil {
