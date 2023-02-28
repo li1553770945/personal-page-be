@@ -29,14 +29,15 @@ jobs:
           set CGO_ENABLED=0
           set GOOS=linux
           set GOARCH=amd64
-          go build -o main
+          go build -o ./output/main
+          cp ./run.sh ./output
       - name: push-main
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           username: 'git'
           server: '${{secrets.REMOTE_ADDRESS}}'
           ssh_private_key: ${{ secrets.GIT_SSH_KEY }}
-          local_path: './main'
+          local_path: './output/*'
           remote_path: '/srv/personal-page-be'
       - name: push-sh
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
