@@ -40,12 +40,7 @@ jobs:
           local_path: './output/*'
           remote_path: '/srv/personal-page-be'
 
-      - name: restart
-        run: |
-          echo ${{ secrets.GIT_SSH_KEY }} > ./id_rsa
-          chmod 600 ./id_rsa
-          ssh -i ./id_rsa git@${{secrets.REMOTE_ADDRESS}} "chmod +x bash /srv/personal-page-be/run.sh; /srv/personal-page-be/run.sh "
-          
+
 
 
 
