@@ -39,14 +39,7 @@ jobs:
           ssh_private_key: ${{ secrets.GIT_SSH_KEY }}
           local_path: './output/*'
           remote_path: '/srv/personal-page-be'
-      - name: push-sh
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          username: 'git'
-          server: '${{secrets.REMOTE_ADDRESS}}'
-          ssh_private_key: ${{ secrets.GIT_SSH_KEY }}
-          local_path: './run.sh'
-          remote_path: '/srv/personal-page-be'
+
       - name: restart
         run: |
           echo ${{ secrets.GIT_SSH_KEY }} > ./id_rsa
