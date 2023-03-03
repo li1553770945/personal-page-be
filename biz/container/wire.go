@@ -9,6 +9,7 @@ import (
 	"personal-page-be/biz/infra/database"
 	"personal-page-be/biz/internal/repo"
 	"personal-page-be/biz/internal/service/file"
+	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/user"
 )
 
@@ -25,6 +26,7 @@ func GetContainer(path string) *Container {
 		//service
 		user.NewUserService,
 		file.NewFileService,
+		global_service.NewGlobalService,
 
 		NewContainer,
 	))
