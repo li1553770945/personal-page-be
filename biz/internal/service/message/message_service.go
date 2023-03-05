@@ -45,7 +45,7 @@ func (s *MessageService) SaveMessage(ctx context.Context, c *app.RequestContext)
 		})
 		return
 	}
-	U.SendServerMessage(s.Config.HttpConfig.SecretKey, "新消息提醒", fmt.Sprintf("消息id：%d  \n类别：%s  \n署名：%s  \n联系方式：%s  \n内容：%s", entity.ID, entity.Category.Name, entity.Name, entity.Contact, entity.Message))
+	U.SendServerMessage(s.Config.HttpConfig.SecretKey, "新留言提醒", fmt.Sprintf("消息id：%d  \n类别：%s  \n署名：%s  \n联系方式：%s  \n内容：%s", entity.ID, entity.Category.Name, entity.Name, entity.Contact, entity.Message))
 	c.JSON(consts.StatusOK, utils.H{
 		"code": 0,
 	})
