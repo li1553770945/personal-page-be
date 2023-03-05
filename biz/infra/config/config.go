@@ -14,7 +14,8 @@ type DatabaseConfig struct {
 }
 
 type HttpConfig struct {
-	Address string `yaml:"address"`
+	Address   string `yaml:"address"`
+	SecretKey string `yaml:"secret_key"`
 }
 
 type Config struct {

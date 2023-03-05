@@ -10,13 +10,8 @@ import (
 	"personal-page-be/biz/internal/assembler"
 	"personal-page-be/biz/internal/domain"
 	"personal-page-be/biz/internal/dto"
-	"personal-page-be/biz/internal/repo"
 	U "personal-page-be/biz/internal/utils"
 )
-
-type UserService struct {
-	Repo repo.IRepository
-}
 
 func (s *UserService) Login(ctx context.Context, c *app.RequestContext) {
 	var user domain.UserEntity

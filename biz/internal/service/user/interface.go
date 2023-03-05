@@ -6,6 +6,10 @@ import (
 	"personal-page-be/biz/internal/repo"
 )
 
+type UserService struct {
+	Repo repo.IRepository
+}
+
 type IUserService interface {
 	Login(ctx context.Context, c *app.RequestContext)
 	Logout(ctx context.Context, c *app.RequestContext)

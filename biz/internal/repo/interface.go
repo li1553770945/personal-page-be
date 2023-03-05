@@ -12,6 +12,9 @@ type IRepository interface {
 	FindFile(fileKey string) (*domain.FileEntity, error)
 	SaveFile(user *domain.FileEntity) error
 	RemoveFile(fileID int) error
+
+	FindAllMessageCategory() (*[]domain.MessageCategoryEntity, error)
+	SaveMessage(entity *domain.MessageEntity) error
 }
 
 type Repository struct {
@@ -26,6 +29,14 @@ func NewRepository(db *gorm.DB) IRepository {
 	err = db.AutoMigrate(&domain.FileEntity{})
 	if err != nil {
 		panic("迁移文件模型失败：" + err.Error())
+	}
+	err = db.AutoMigrate(&domain.MessageCategoryEntity{})
+	if err != nil {
+		panic("迁移消息类别模型失败：" + err.Error())
+	}
+	err = db.AutoMigrate(&domain.MessageEntity{})
+	if err != nil {
+		panic("迁移消息模型失败：" + err.Error())
 	}
 	return &Repository{
 		DB: db,

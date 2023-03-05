@@ -21,6 +21,9 @@ func customizedRegister(r *server.Hertz) {
 		api.GET("/download-file", App.FileService.DownloadFile)
 		api.GET("/file-info", App.FileService.FileInfo)
 		api.DELETE("/delete-file", append(middlewire.UserMiddleware(), App.FileService.DeleteFile)...)
+
+		api.GET("/all-message-categories", App.MessageService.FindAllMessageCategories)
+		api.POST("/message", App.MessageService.SaveMessage)
 	}
 
 }

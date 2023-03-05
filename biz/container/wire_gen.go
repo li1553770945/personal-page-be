@@ -12,6 +12,7 @@ import (
 	"personal-page-be/biz/internal/repo"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
+	"personal-page-be/biz/internal/service/message"
 	"personal-page-be/biz/internal/service/user"
 )
 
@@ -24,6 +25,7 @@ func GetContainer(path string) *Container {
 	iUserService := user.NewUserService(iRepository)
 	iFileService := file.NewFileService(iRepository)
 	iGlobalService := global_service.NewGlobalService(iRepository)
-	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService)
+	iMessageService := message.NewMessageService(iRepository, configConfig)
+	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService)
 	return container
 }
