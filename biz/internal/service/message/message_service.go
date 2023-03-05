@@ -87,6 +87,8 @@ func (s *MessageService) GetReply(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
+	reply.HaveRead = true
+	s.Repo.SaveReply(reply)
 	c.JSON(consts.StatusOK, utils.H{
 		"code": 0,
 		"data": reply,
