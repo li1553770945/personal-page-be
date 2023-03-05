@@ -24,6 +24,8 @@ func customizedRegister(r *server.Hertz) {
 
 		api.GET("/all-message-categories", App.MessageService.FindAllMessageCategories)
 		api.POST("/message", App.MessageService.SaveMessage)
+		api.GET("/reply", App.MessageService.GetReply)
+		api.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
 	}
 
 }

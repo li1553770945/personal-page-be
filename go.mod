@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/cloudwego/hertz v0.5.2
+	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/hertz-contrib/sessions v1.0.1
 	github.com/robfig/cron/v3 v3.0.1
