@@ -2,6 +2,7 @@ package container
 
 import (
 	"personal-page-be/biz/infra/config"
+	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/message"
@@ -14,12 +15,14 @@ type Container struct {
 	FileService    file.IFileService
 	GlobalService  global_service.IGlobalService
 	MessageService message.IMessageService
+	ChatService    chat.IChatService
 }
 
 func NewContainer(config *config.Config, userService user.IUserService,
 	fileService file.IFileService,
 	globalService global_service.IGlobalService,
 	messageService message.IMessageService,
+	chatService chat.IChatService,
 ) *Container {
 	return &Container{
 		Config:         config,
@@ -27,6 +30,7 @@ func NewContainer(config *config.Config, userService user.IUserService,
 		FileService:    fileService,
 		GlobalService:  globalService,
 		MessageService: messageService,
+		ChatService:    chatService,
 	}
 
 }

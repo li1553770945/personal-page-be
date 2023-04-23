@@ -26,6 +26,16 @@ func customizedRegister(r *server.Hertz) {
 		api.POST("/message", App.MessageService.SaveMessage)
 		api.GET("/reply", App.MessageService.GetReply)
 		api.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
+
+		//api.POST("/chat-message", App.ChatService.SendMessage)
+		//api.GET("/chat-message", App.ChatService.GetMessageList)
+		api.POST("/close-chat", App.ChatService.CloseChat)
+	}
+
+	socket := r.Group("/socket")
+	{
+		socket.GET("/new-chat", App.ChatService.CreateChat)
+		socket.GET("/join-chat", App.ChatService.JoinChat)
 	}
 
 }

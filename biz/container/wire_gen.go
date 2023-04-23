@@ -7,9 +7,12 @@
 package container
 
 import (
+	"personal-page-be/biz/infra/cache"
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/infra/database"
+	"personal-page-be/biz/infra/log"
 	"personal-page-be/biz/internal/repo"
+	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/message"
@@ -26,6 +29,9 @@ func GetContainer(path string) *Container {
 	iFileService := file.NewFileService(iRepository)
 	iGlobalService := global_service.NewGlobalService(iRepository)
 	iMessageService := message.NewMessageService(iRepository, configConfig)
-	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService)
+	cacheCache := cache.NewCache()
+	logger := log.NewLogger()
+	iChatService := chat.NewChatService(cacheCache, logger)
+	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService)
 	return container
 }
