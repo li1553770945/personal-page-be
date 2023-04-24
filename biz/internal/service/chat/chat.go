@@ -53,7 +53,7 @@ func (s *ChatService) JoinChat(ctx context.Context, c *app.RequestContext) {
 		},
 	}
 	ChatID := c.DefaultQuery("chat_id", "")
-
+	clientID := c.DefaultQuery("client_id", "")
 	chatInterface, found := s.Cache.Get(ChatID)
 	if !found {
 		c.JSON(200, utils.H{"code": 4004, "msg": "未找到相关chat"})
@@ -67,10 +67,24 @@ func (s *ChatService) JoinChat(ctx context.Context, c *app.RequestContext) {
 		c.JSON(200, utils.H{"code": 5001, "msg": "内部错误，chatInterface断言失败"})
 		return
 	}
+	var role string
+	if clientID != "" {
+		if clientID == chatEntity.CreaterID {
+			role = "creater"
+		} else if clientID == chatEntity.JoinerID {
+			role = "joiner"
+		} else {
+			c.JSON(200, utils.H{"code": 5001, "msg": "客户端ID错误"})
+			s.Log.Error("client id not found")
+			return
+		}
+	} else {
+		chatEntity.JoinerID = U.RandSeq(10)
+		role = "joiner"
+	}
 
-	chatEntity.JoinerID = U.RandSeq(10)
 	err := upgrader.Upgrade(c, func(conn *websocket.Conn) {
-		s.MessageHandler(conn, chatEntity, "joiner")
+		s.MessageHandler(conn, chatEntity, role)
 	})
 	if err != nil {
 		c.JSON(200, utils.H{"code": 5001, "msg": err.Error()})
@@ -148,7 +162,7 @@ func (s *ChatService) MessageHandler(recvConn *websocket.Conn, chatEntity *domai
 					}
 				} else {
 					sendMsgEntity.Data = ""
-					sendMsgEntity.Type = "error"
+					sendMsgEntity.Type = "warning"
 					sendMsgEntity.Time = time.Now()
 					sendMsgEntity.ErrorMsg = "对方未上线，发送失败"
 					jsonBytes, _ := json.Marshal(sendMsgEntity)
