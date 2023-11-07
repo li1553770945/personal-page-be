@@ -3,5 +3,5 @@ if [ ! -d "./pidfile.txt" ]; then
   kill -9 `cat pidfile.txt`
 fi
 
-chmod +x ./main
-nohup ./main > logfile.txt & echo $! > pidfile.txt
+chmod +x ./personal-page-be
+nohup ./personal-page-be > logfile.txt & echo $! > pidfile.txt

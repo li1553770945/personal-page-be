@@ -7,7 +7,7 @@ import (
 )
 
 func (s *GlobalService) DeleteFile() {
-	root := "./file"
+	root := "./files"
 	files, err := os.ReadDir(root)
 	if err != nil {
 		panic(err)
