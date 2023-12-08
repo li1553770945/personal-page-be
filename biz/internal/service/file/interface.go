@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/sirupsen/logrus"
 	"personal-page-be/biz/internal/repo"
 )
 
@@ -13,8 +14,9 @@ type IFileService interface {
 	DeleteFile(ctx context.Context, c *app.RequestContext)
 }
 
-func NewFileService(repo repo.IRepository) IFileService {
+func NewFileService(repo repo.IRepository, logger *logrus.Logger) IFileService {
 	return &FileService{
-		Repo: repo,
+		Repo:   repo,
+		Logger: logger,
 	}
 }

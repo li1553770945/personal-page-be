@@ -1,26 +1,29 @@
 package domain
 
-import "gorm.io/gorm"
+import (
+	"personal-page-be/biz/internal/do"
+)
 
 type MessageCategoryEntity struct {
-	gorm.Model
+	do.BaseModel
 	Name   string `json:"name"`
 	Value  string `json:"value"`
 	CanUse bool   `json:"can_use"`
 }
 type MessageEntity struct {
-	gorm.Model
-	Category   MessageCategoryEntity
-	CategoryID int    `json:"category_id"`
-	Message    string `json:"message"`
-	Name       string `json:"name"`
-	Contact    string `json:"contact"`
-	HaveRead   bool   `json:"have_read"`
-	UUID       string `json:"uuid"`
+	do.BaseModel
+	Category   MessageCategoryEntity `json:"category"`
+	CategoryID int                   `json:"category_id"`
+	Title      string                `json:"title"`
+	Message    string                `json:"message"`
+	Name       string                `json:"name"`
+	Contact    string                `json:"contact"`
+	HaveRead   bool                  `json:"have_read"`
+	UUID       string                `json:"uuid"`
 }
 
 type ReplyEntity struct {
-	gorm.Model
+	do.BaseModel
 	Content   string `json:"content"`
 	Message   MessageEntity
 	MessageID uint `json:"message_id"`

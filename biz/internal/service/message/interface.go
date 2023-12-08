@@ -17,6 +17,7 @@ type IMessageService interface {
 	SaveMessage(ctx context.Context, c *app.RequestContext)
 	AddReply(ctx context.Context, c *app.RequestContext)
 	GetReply(ctx context.Context, c *app.RequestContext)
+	GetMessages(ctx context.Context, c *app.RequestContext)
 }
 
 func NewMessageService(repo repo.IRepository, config_ *config.Config) IMessageService {

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"math/rand"
+	"unicode"
 )
 
 func RandSeq(n int) string {
@@ -11,4 +12,13 @@ func RandSeq(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
+}
+
+func IsAlphanumeric(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

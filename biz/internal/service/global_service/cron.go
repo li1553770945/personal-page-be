@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/robfig/cron/v3"
 	"os"
+	"personal-page-be/biz/internal/constant"
 )
 
 func (s *GlobalService) DeleteFile() {
-	root := "./files"
+	root := constant.FileBasePath
 	files, err := os.ReadDir(root)
 	if err != nil {
 		panic(err)
@@ -16,14 +17,18 @@ func (s *GlobalService) DeleteFile() {
 		if file.IsDir() {
 			continue
 		}
-		fmt.Println(file.Name())
-		fileEntity, err := s.Repo.FindFile(file.Name())
+		fileEntity, err := s.Repo.FindFileBySaveName(file.Name())
 		if err != nil {
 			panic(err)
 		}
-		if fileEntity.ID == 0 {
-			filePath := fmt.Sprintf("./file/%s", file.Name())
-			os.Remove(filePath)
+		if fileEntity.ID == 0 || fileEntity.Count == 0 {
+			filePath := fmt.Sprintf("./%s/%s", constant.FileBasePath, file.Name())
+			err = os.Remove(filePath)
+			if err != nil {
+				s.Logger.Error("删除文件失败" + err.Error())
+			} else {
+				s.Logger.Info(fmt.Sprintf("删除文件%s成功", file.Name()))
+			}
 		}
 	}
 }
@@ -37,4 +42,5 @@ func (s *GlobalService) StartCronDeleteFile() {
 		panic(err)
 	}
 	crontab.Start()
+	s.Logger.Info("启动定时删除文件任务成功")
 }

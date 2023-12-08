@@ -24,7 +24,7 @@ func (Repo *Repository) SaveMessage(entity *domain.MessageEntity) error {
 
 func (Repo *Repository) FindMessageByUUID(uuid string) (*domain.MessageEntity, error) {
 	var entity domain.MessageEntity
-	err := Repo.DB.Where("uuid = ?", uuid).Find(&entity).Error
+	err := Repo.DB.Preload("Category").Where("uuid = ?", uuid).Find(&entity).Error
 	if err != nil {
 		return nil, err
 	}
@@ -55,4 +55,13 @@ func (Repo *Repository) SaveReply(entity *domain.ReplyEntity) error {
 		err := Repo.DB.Save(&entity).Error
 		return err
 	}
+}
+
+func (Repo *Repository) GetUnreadMsg() (*[]domain.MessageEntity, error) {
+	var entity []domain.MessageEntity
+	err := Repo.DB.Preload("Category").Select("ID", "Name", "CreatedAt", "Title", "UUID").Where("have_read = ?", false).Find(&entity).Error
+	if err != nil {
+		return nil, err
+	}
+	return &entity, nil
 }

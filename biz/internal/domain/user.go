@@ -1,9 +1,11 @@
 package domain
 
-import "gorm.io/gorm"
+import (
+	"personal-page-be/biz/internal/do"
+)
 
 type UserEntity struct {
-	gorm.Model
+	do.BaseModel
 	Username     string `vd:"len($)>5" gorm:"index:username_idx,unique"`
 	Nickname     string
 	Password     string
