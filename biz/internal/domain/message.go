@@ -12,14 +12,14 @@ type MessageCategoryEntity struct {
 }
 type MessageEntity struct {
 	do.BaseModel
-	Category   MessageCategoryEntity
-	CategoryID int    `json:"category_id"`
-	Title      string `json:"title"`
-	Message    string `json:"message"`
-	Name       string `json:"name"`
-	Contact    string `json:"contact"`
-	HaveRead   bool   `json:"have_read"`
-	UUID       string `json:"uuid"`
+	Category   MessageCategoryEntity `json:"category"`
+	CategoryID int                   `json:"category_id"`
+	Title      string                `json:"title"`
+	Message    string                `json:"message"`
+	Name       string                `json:"name"`
+	Contact    string                `json:"contact"`
+	HaveRead   bool                  `json:"have_read"`
+	UUID       string                `json:"uuid"`
 }
 
 type ReplyEntity struct {
