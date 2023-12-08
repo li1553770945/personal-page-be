@@ -9,6 +9,7 @@ type IRepository interface {
 	FindUser(username string) (*domain.UserEntity, error)
 	SaveUser(user *domain.UserEntity) error
 
+	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
 	FindFileBySaveName(saveName string) (*domain.FileEntity, error)
 	SaveFile(user *domain.FileEntity) error
