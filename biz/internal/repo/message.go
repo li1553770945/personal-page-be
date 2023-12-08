@@ -56,3 +56,12 @@ func (Repo *Repository) SaveReply(entity *domain.ReplyEntity) error {
 		return err
 	}
 }
+
+func (Repo *Repository) GetUnreadMsg() (*[]domain.MessageEntity, error) {
+	var entity []domain.MessageEntity
+	err := Repo.DB.Select("ID", "Name", "CreatedAt", "Title").Where("have_read = ?", false).Find(&entity).Error
+	if err != nil {
+		return nil, err
+	}
+	return &entity, nil
+}

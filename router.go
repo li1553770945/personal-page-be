@@ -10,27 +10,28 @@ import (
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
 	api := r.Group("/api")
-	{
-		api.POST("/login", App.UserService.Login)
-		api.GET("/logout", App.UserService.Logout)
-		api.GET("/user-info", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
-		api.POST("/generate-activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
-		api.POST("/register", App.UserService.Register)
 
-		api.POST("/upload-file", append(middlewire.UserMiddleware(), App.FileService.UploadFile)...)
-		api.GET("/download-file", App.FileService.DownloadFile)
-		api.GET("/file-info", App.FileService.FileInfo)
-		api.DELETE("/delete-file", append(middlewire.UserMiddleware(), App.FileService.DeleteFile)...)
+	userApi := api.Group("/users")
 
-		api.GET("/all-message-categories", App.MessageService.FindAllMessageCategories)
-		api.POST("/message", App.MessageService.SaveMessage)
-		api.GET("/reply", App.MessageService.GetReply)
-		api.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
+	userApi.POST("/login", App.UserService.Login)
+	userApi.GET("/logout", App.UserService.Logout)
+	userApi.GET("/me", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
+	userApi.POST("/activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
+	userApi.POST("/register", App.UserService.Register)
 
-		//api.POST("/chat-message", App.ChatService.SendMessage)
-		//api.GET("/chat-message", App.ChatService.GetMessageList)
-		api.POST("/close-chat", App.ChatService.CloseChat)
-	}
+	fileApi := api.Group("/files")
+
+	fileApi.POST("", append(middlewire.UserMiddleware(), App.FileService.UploadFile)...)
+	fileApi.GET("", App.FileService.DownloadFile)
+	fileApi.GET("/info", App.FileService.FileInfo)
+	fileApi.DELETE("/:id", append(middlewire.UserMiddleware(), App.FileService.DeleteFile)...)
+
+	messageApi := api.Group("/messages")
+	messageApi.GET("/categories", App.MessageService.FindAllMessageCategories)
+	messageApi.POST("", App.MessageService.SaveMessage)
+	messageApi.GET("/reply", App.MessageService.GetReply)
+	messageApi.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
+	messageApi.GET("", App.MessageService.GetMessages) //TODO:根据uuid获取消息，获取未读消息
 
 	socket := r.Group("/socket")
 	{

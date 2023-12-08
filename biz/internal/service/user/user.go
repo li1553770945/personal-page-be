@@ -125,7 +125,7 @@ func (s *UserService) GenerateActivateCode(ctx context.Context, c *app.RequestCo
 	if err != nil {
 		c.JSON(consts.StatusOK, utils.H{
 			"code": 5001,
-			"msg":  "操作失败：" + err.Error(),
+			"msg":  "username必须大于5位" + err.Error(),
 		})
 		return
 	}

@@ -9,9 +9,10 @@ type IRepository interface {
 	FindUser(username string) (*domain.UserEntity, error)
 	SaveUser(user *domain.UserEntity) error
 
-	FindFile(fileKey string) (*domain.FileEntity, error)
+	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
+	FindFileBySaveName(saveName string) (*domain.FileEntity, error)
 	SaveFile(user *domain.FileEntity) error
-	RemoveFile(fileID int) error
+	RemoveFile(fileID uint) error
 
 	FindAllMessageCategory() (*[]domain.MessageCategoryEntity, error)
 	SaveMessage(entity *domain.MessageEntity) error
@@ -19,6 +20,7 @@ type IRepository interface {
 	FindReplyByMessageID(messageId uint) (*domain.ReplyEntity, error)
 	SaveReply(entity *domain.ReplyEntity) error
 	FindMessageByID(messageId uint) (*domain.MessageEntity, error)
+	GetUnreadMsg() (*[]domain.MessageEntity, error)
 }
 
 type Repository struct {
