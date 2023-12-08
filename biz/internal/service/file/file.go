@@ -174,36 +174,56 @@ func (s *FileService) DownloadFile(ctx context.Context, c *app.RequestContext) {
 }
 
 func (s *FileService) DeleteFile(ctx context.Context, c *app.RequestContext) {
-	code, msg, data := s.getFileInfo(c.DefaultQuery("file-key", ""))
-
-	if code == 0 {
-		if data.UserID != s.getUserId(ctx) {
-			c.JSON(consts.StatusOK, utils.H{
-				"code": 4003,
-				"msg":  "无权执行操作",
-			})
-			return
-		}
-
-		err := s.Repo.RemoveFile(data.ID)
-		if err != nil {
-			c.JSON(consts.StatusOK, utils.H{
-				"code": 5001,
-				"msg":  "删除失败：" + err.Error(),
-			})
-			return
-		}
+	fileID := c.Param("id")
+	fileIDInt, err := strconv.ParseUint(fileID, 10, 64)
+	if err != nil {
 		c.JSON(consts.StatusOK, utils.H{
-			"code": 0,
-			"msg":  "删除成功",
+			"code": 2001,
+			"msg":  "参数错误",
 		})
 		return
-	} else {
+	}
+
+	file, err := s.Repo.FindFileByID(uint(fileIDInt))
+	if err != nil {
 		c.JSON(consts.StatusOK, utils.H{
-			"code": code,
-			"msg":  msg,
+			"code": 5001,
+			"msg":  err.Error(),
 		})
 	}
+
+	username := ctx.Value("username")
+	user, err := s.Repo.FindUser(username.(string))
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 5001,
+			"msg":  err.Error(),
+		})
+		return
+	}
+
+	if uint(file.UserID) != user.ID && user.Role != "admin" {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "无权执行操作",
+		})
+		return
+	}
+
+	err = s.Repo.RemoveFile(file.ID)
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 5001,
+			"msg":  "删除失败：" + err.Error(),
+		})
+		return
+	}
+	c.JSON(consts.StatusOK, utils.H{
+		"code": 0,
+		"msg":  "删除成功",
+	})
+	return
+
 }
 
 func (s *FileService) getUserId(ctx context.Context) (uid int) {
