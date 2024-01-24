@@ -25,7 +25,7 @@ func GetContainer(path string) *Container {
 	configConfig := config.InitConfig(path)
 	db := database.NewDatabase(configConfig)
 	iRepository := repo.NewRepository(db)
-	iUserService := user.NewUserService(iRepository)
+	iUserService := user.NewUserService(iRepository, configConfig)
 	logger := log.NewLogger()
 	iFileService := file.NewFileService(iRepository, logger)
 	iGlobalService := global_service.NewGlobalService(iRepository, logger)

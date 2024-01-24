@@ -20,6 +20,7 @@ func (s *ChatService) CreateChat(ctx context.Context, c *app.RequestContext) {
 	}
 
 	var chatID string
+	// 防止生成重复聊天id
 	for {
 		chatID = U.RandSeq(4)
 		_, found := s.Cache.Get(chatID)
