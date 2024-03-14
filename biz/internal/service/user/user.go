@@ -56,14 +56,6 @@ func (s *UserService) Login(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	if findUser.IsActivate == false {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "您的账户未激活，请使用激活码激活",
-		})
-		return
-	}
-
 	session := sessions.Default(c)
 	session.Set("username", user.Username)
 	session.Save()
@@ -72,6 +64,64 @@ func (s *UserService) Login(ctx context.Context, c *app.RequestContext) {
 		"code": 0,
 		"msg":  "登陆成功",
 		"data": assembler.UserEntityToDTO(findUser),
+	})
+}
+
+func (s *UserService) GenTencentIMUserSig(ctx context.Context, c *app.RequestContext) {
+	var user domain.UserEntity
+	err := c.BindAndValidate(&user)
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 5001,
+			"msg":  err.Error(),
+		})
+		return
+	}
+	findUser, err := s.Repo.FindUser(user.Username)
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 5001,
+			"msg":  err.Error(),
+		})
+		return
+	}
+	if !findUser.IsActivate {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "用户未注册激活，请注册后使用",
+		})
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(user.Password))
+	if findUser.ID == 0 || err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "用户名或密码错误",
+		})
+		return
+	}
+
+	if findUser.CanUse == false {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "抱歉，您的账户已被禁用",
+		})
+		return
+	}
+	tencentConfig := s.Config.TencentConfig
+	userSigStr, err := GenUserSig(tencentConfig.APPID, tencentConfig.SecretKey, findUser.Username, 24*60*60*180)
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": 4003,
+			"msg":  "获取UserSig调用API失败",
+		})
+		return
+	}
+	c.JSON(consts.StatusOK, utils.H{
+		"code": 0,
+		"msg":  "获取成功",
+		"data": userSigStr,
 	})
 }
 

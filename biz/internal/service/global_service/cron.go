@@ -5,6 +5,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"os"
 	"personal-page-be/biz/internal/constant"
+	"time"
 )
 
 func (s *GlobalService) DeleteFile() {
@@ -17,19 +18,30 @@ func (s *GlobalService) DeleteFile() {
 		if file.IsDir() {
 			continue
 		}
-		fileEntity, err := s.Repo.FindFileBySaveName(file.Name())
-		if err != nil {
-			panic(err)
-		}
-		if fileEntity.ID == 0 || fileEntity.Count == 0 {
-			filePath := fmt.Sprintf("./%s/%s", constant.FileBasePath, file.Name())
-			err = os.Remove(filePath)
+		maxRetries := 5     // 最大重试次数
+		waitInterval := 500 // 初始等待间隔（毫秒）
+
+		for i := 0; i < maxRetries; i++ {
+			fileEntity, err := s.Repo.FindFileBySaveName(file.Name())
 			if err != nil {
-				s.Logger.Error("删除文件失败" + err.Error())
-			} else {
-				s.Logger.Info(fmt.Sprintf("删除文件%s成功", file.Name()))
+				s.Logger.Error("查询要删除的文件失败：" + err.Error())
+				time.Sleep(time.Duration(waitInterval) * time.Millisecond)
+				waitInterval *= 2 // 指数增长等待间隔
+				continue
 			}
+			if fileEntity.ID == 0 || fileEntity.Count == 0 {
+				filePath := fmt.Sprintf("./%s/%s", constant.FileBasePath, file.Name())
+				err = os.Remove(filePath)
+				if err != nil {
+					s.Logger.Error("删除文件失败" + err.Error())
+				} else {
+					s.Logger.Info(fmt.Sprintf("删除文件%s成功", file.Name()))
+				}
+			}
+			break
+
 		}
+
 	}
 }
 func (s *GlobalService) StartCronDeleteFile() {
