@@ -35,7 +35,7 @@ func customizedRegister(r *server.Hertz) {
 	messageApi.GET("", App.MessageService.GetMessages)
 
 	projectsApi := api.Group("/projects")
-	projectsApi.GET("pages", App.ProjectService.GetPages)
+	projectsApi.GET("/num", App.ProjectService.GetNum)
 	projectsApi.GET("", App.ProjectService.GetProjects)
 	projectsApi.POST("", append(middlewire.UserMiddleware(), App.ProjectService.AddProject)...)
 	projectsApi.DELETE("/:id", append(middlewire.UserMiddleware(), App.ProjectService.RemoveProject)...)

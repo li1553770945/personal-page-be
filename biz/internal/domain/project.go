@@ -6,8 +6,9 @@ import (
 
 type ProjectEntity struct {
 	do.BaseModel
-	Name string `json:"file_name"`
-	Desc string `json:"desc"`
-	Link string `json:"link"`
-	Date string `json:"date"`
+	Name   string `vd:"len($)>5" json:"name"`
+	Desc   string `vd:"len($)>5" json:"desc"`
+	Status string `vd:"len($)>2" json:"status"`
+	Link   string `vd:"len($)>5" json:"link"`
+	Period string `vd:"len($)>5" json:"period"`
 }

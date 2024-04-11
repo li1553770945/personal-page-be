@@ -7,20 +7,13 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"os"
 	"personal-page-be/biz/internal/constant"
 	"personal-page-be/biz/internal/domain"
-	"personal-page-be/biz/internal/repo"
 	U "personal-page-be/biz/internal/utils"
 	"strconv"
 	"time"
 )
-
-type FileService struct {
-	Repo   repo.IRepository
-	Logger *logrus.Logger
-}
 
 func GenerateFileKey() string {
 	return U.RandSeq(4)

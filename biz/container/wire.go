@@ -14,6 +14,7 @@ import (
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/message"
+	"personal-page-be/biz/internal/service/project"
 	"personal-page-be/biz/internal/service/user"
 )
 
@@ -35,6 +36,7 @@ func GetContainer(path string) *Container {
 		global_service.NewGlobalService,
 		message.NewMessageService,
 		chat.NewChatService,
+		project.NewProjectService,
 
 		NewContainer,
 	))
