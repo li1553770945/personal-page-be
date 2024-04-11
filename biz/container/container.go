@@ -6,6 +6,7 @@ import (
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/message"
+	"personal-page-be/biz/internal/service/project"
 	"personal-page-be/biz/internal/service/user"
 )
 
@@ -16,6 +17,7 @@ type Container struct {
 	GlobalService  global_service.IGlobalService
 	MessageService message.IMessageService
 	ChatService    chat.IChatService
+	ProjectService project.IProjectService
 }
 
 func NewContainer(config *config.Config, userService user.IUserService,
@@ -23,6 +25,7 @@ func NewContainer(config *config.Config, userService user.IUserService,
 	globalService global_service.IGlobalService,
 	messageService message.IMessageService,
 	chatService chat.IChatService,
+	projectService project.IProjectService,
 ) *Container {
 	return &Container{
 		Config:         config,
@@ -31,6 +34,7 @@ func NewContainer(config *config.Config, userService user.IUserService,
 		GlobalService:  globalService,
 		MessageService: messageService,
 		ChatService:    chatService,
+		ProjectService: projectService,
 	}
 
 }

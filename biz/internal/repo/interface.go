@@ -22,6 +22,12 @@ type IRepository interface {
 	SaveReply(entity *domain.ReplyEntity) error
 	FindMessageByID(messageId uint) (*domain.MessageEntity, error)
 	GetUnreadMsg() (*[]domain.MessageEntity, error)
+
+	SaveProject(project *domain.ProjectEntity) error
+	RemoveProject(projectID uint) error
+	GetProject(projectID uint) (*domain.ProjectEntity, error)
+	GetProjectsNum() (int64, error)
+	GetProjects(from uint, end uint) (*[]domain.ProjectEntity, error)
 }
 
 type Repository struct {
@@ -48,6 +54,10 @@ func NewRepository(db *gorm.DB) IRepository {
 	err = db.AutoMigrate(&domain.ReplyEntity{})
 	if err != nil {
 		panic("迁移回复模型失败：" + err.Error())
+	}
+	err = db.AutoMigrate(&domain.ProjectEntity{})
+	if err != nil {
+		panic("迁移项目模型失败：" + err.Error())
 	}
 	return &Repository{
 		DB: db,

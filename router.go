@@ -32,7 +32,13 @@ func customizedRegister(r *server.Hertz) {
 	messageApi.POST("", App.MessageService.SaveMessage)
 	messageApi.GET("/reply", App.MessageService.GetReply)
 	messageApi.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
-	messageApi.GET("", App.MessageService.GetMessages) //TODO:根据uuid获取消息，获取未读消息
+	messageApi.GET("", App.MessageService.GetMessages)
+
+	projectsApi := api.Group("/projects")
+	projectsApi.GET("pages", App.ProjectService.GetPages)
+	projectsApi.GET("", App.ProjectService.GetProjects)
+	projectsApi.POST("", append(middlewire.UserMiddleware(), App.ProjectService.AddProject)...)
+	projectsApi.DELETE("/:id", append(middlewire.UserMiddleware(), App.ProjectService.RemoveProject)...)
 
 	socket := r.Group("/socket")
 	{
