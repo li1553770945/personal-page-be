@@ -7,6 +7,11 @@ import (
 	"personal-page-be/biz/internal/repo"
 )
 
+type FileService struct {
+	Repo   repo.IRepository
+	Logger *logrus.Logger
+}
+
 type IFileService interface {
 	UploadFile(ctx context.Context, c *app.RequestContext)
 	DownloadFile(ctx context.Context, c *app.RequestContext)

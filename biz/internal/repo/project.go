@@ -40,7 +40,7 @@ func (Repo *Repository) GetProjectsNum() (int64, error) {
 }
 func (Repo *Repository) GetProjects(start int, end int) (*[]domain.ProjectEntity, error) {
 	var projects []domain.ProjectEntity
-	err := Repo.DB.Offset(start).Limit(end - start).Find(&projects).Error
+	err := Repo.DB.Offset(start).Limit(end - start - 1).Find(&projects).Error
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,7 @@ type IRepository interface {
 	RemoveProject(projectID uint) error
 	GetProject(projectID uint) (*domain.ProjectEntity, error)
 	GetProjectsNum() (int64, error)
-	GetProjects(from uint, end uint) (*[]domain.ProjectEntity, error)
+	GetProjects(from int, end int) (*[]domain.ProjectEntity, error)
 }
 
 type Repository struct {
