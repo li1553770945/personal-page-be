@@ -102,6 +102,34 @@ func (s *ProjectService) GetNum(ctx context.Context, c *app.RequestContext) {
 }
 
 func (s *ProjectService) GetProjects(ctx context.Context, c *app.RequestContext) {
+	sort := c.DefaultQuery("sort", "default")
+	sortFields := map[string]string{
+		"default":             "start_date desc",
+		"work_of_volume_asc":  "volume_of_work asc",
+		"work_of_volume_desc": "volume_of_work desc",
+		"start_date_asc":      "start_date asc",
+		"start_date_desc":     "start_date desc",
+		"difficulty_asc":      "difficulty asc",
+		"difficulty_desc":     "difficulty desc",
+	}
+
+	order, ok := sortFields[sort]
+	if !ok {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": error_type.ErrBadRequest,
+			"msg":  "排序参数错误",
+		})
+	}
+
+	status := c.DefaultQuery("status", "0")
+	statusInt, err := strconv.Atoi(status)
+	if err != nil {
+		c.JSON(consts.StatusOK, utils.H{
+			"code": error_type.ErrBadRequest,
+			"msg":  "排序参数错误",
+		})
+	}
+
 	start := c.DefaultQuery("start", "0")
 	startInt, err := strconv.Atoi(start)
 	if err != nil {
@@ -124,7 +152,7 @@ func (s *ProjectService) GetProjects(ctx context.Context, c *app.RequestContext)
 		endInt = startInt + constant.MaxProjectsNum + 1
 	}
 
-	projects, err := s.Repo.GetProjects(startInt, endInt)
+	projects, err := s.Repo.GetProjects(startInt, endInt, order, statusInt)
 
 	c.JSON(consts.StatusOK, utils.H{
 		"code": 0,
