@@ -102,11 +102,11 @@ func (s *ProjectService) GetNum(ctx context.Context, c *app.RequestContext) {
 }
 
 func (s *ProjectService) GetProjects(ctx context.Context, c *app.RequestContext) {
-	sort := c.DefaultQuery("sort", "default")
+	sort := c.DefaultQuery("order", "default")
 	sortFields := map[string]string{
 		"default":             "start_date desc",
-		"work_of_volume_asc":  "volume_of_work asc",
-		"work_of_volume_desc": "volume_of_work desc",
+		"volume_of_work_asc":  "volume_of_work asc",
+		"volume_of_work_desc": "volume_of_work desc",
 		"start_date_asc":      "start_date asc",
 		"start_date_desc":     "start_date desc",
 		"difficulty_asc":      "difficulty asc",
