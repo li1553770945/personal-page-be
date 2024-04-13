@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"fmt"
 	"personal-page-be/biz/internal/domain"
 )
 
@@ -45,7 +44,6 @@ func (Repo *Repository) GetProjects(start int, end int, order string, status int
 	if status != 0 {
 		db = db.Where("status = ?", status)
 	}
-	fmt.Println(order)
 	err := db.Order(order).Order("created_at desc").Offset(start).Limit(end - start).Find(&projects).Error
 	if err != nil {
 		return nil, err
