@@ -18,7 +18,6 @@ type IUserService interface {
 	GetUserInfo(ctx context.Context, c *app.RequestContext)
 	GenerateActivateCode(ctx context.Context, c *app.RequestContext)
 	Register(ctx context.Context, c *app.RequestContext)
-	GenTencentIMUserSig(ctx context.Context, c *app.RequestContext)
 }
 
 func NewUserService(repo repo.IRepository, config *config.Config) IUserService {

@@ -17,7 +17,6 @@ func customizedRegister(r *server.Hertz) {
 	userApi.GET("/logout", App.UserService.Logout)
 	userApi.GET("/me", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
 	userApi.POST("/activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
-	userApi.POST("/tencent-usersig", App.UserService.GenTencentIMUserSig)
 	userApi.POST("/register", App.UserService.Register)
 
 	fileApi := api.Group("/files")
