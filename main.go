@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/hertz-contrib/cors"
 	"github.com/hertz-contrib/sessions"
 	"github.com/hertz-contrib/sessions/cookie"
 	"personal-page-be/biz/container"
@@ -20,6 +21,11 @@ func main() {
 	h := server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
 	store := cookie.NewStore([]byte("secret"))
 	h.Use(sessions.New("user", store))
+	h.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "https://peacesheep.xyz", "https://www.peacesheep.xyz"},
+		AllowCredentials: true,
+		AllowWebSockets:  true,
+	}))
 	register(h)
 	h.OnShutdown = append(h.OnShutdown, func(ctx context.Context) {
 		fmt.Println("hook 1")

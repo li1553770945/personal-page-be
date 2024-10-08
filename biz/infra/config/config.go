@@ -18,15 +18,9 @@ type HttpConfig struct {
 	SecretKey string `yaml:"secret_key"`
 }
 
-type TencentConfig struct {
-	APPID     int    `yaml:"app_id"`
-	SecretKey string `yaml:"key"`
-}
-
 type Config struct {
 	DatabaseConfig DatabaseConfig `yaml:"database"`
 	HttpConfig     HttpConfig     `yaml:"http"`
-	TencentConfig  TencentConfig  `yaml:"tencent"`
 }
 
 func InitConfig(path string) *Config {
