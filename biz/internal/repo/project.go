@@ -38,9 +38,13 @@ func (Repo *Repository) GetProjectsNum() (int64, error) {
 	}
 	return num, nil
 }
-func (Repo *Repository) GetProjects(start int, end int) (*[]domain.ProjectEntity, error) {
+func (Repo *Repository) GetProjects(start int, end int, order string, status int) (*[]domain.ProjectEntity, error) {
 	var projects []domain.ProjectEntity
-	err := Repo.DB.Offset(start).Limit(end - start - 1).Find(&projects).Error
+	db := Repo.DB
+	if status != 0 {
+		db = db.Where("status = ?", status)
+	}
+	err := db.Order(order).Order("created_at desc").Offset(start).Limit(end - start).Find(&projects).Error
 	if err != nil {
 		return nil, err
 	}
