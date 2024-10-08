@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/sirupsen/logrus"
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/internal/repo"
 )
@@ -10,6 +11,7 @@ import (
 type MessageService struct {
 	Repo   repo.IRepository
 	Config *config.Config
+	Logger *logrus.Logger
 }
 
 type IMessageService interface {
@@ -20,10 +22,11 @@ type IMessageService interface {
 	GetMessages(ctx context.Context, c *app.RequestContext)
 }
 
-func NewMessageService(repo repo.IRepository, config_ *config.Config) IMessageService {
+func NewMessageService(repo repo.IRepository, config *config.Config, logger *logrus.Logger) IMessageService {
 	s := &MessageService{
 		Repo:   repo,
-		Config: config_,
+		Config: config,
+		Logger: logger,
 	}
 	return s
 }
