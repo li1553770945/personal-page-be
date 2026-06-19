@@ -12,6 +12,7 @@ import (
 	"personal-page-be/biz/infra/database"
 	"personal-page-be/biz/infra/log"
 	"personal-page-be/biz/internal/repo"
+	"personal-page-be/biz/internal/service/aichat"
 	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
@@ -28,12 +29,13 @@ func GetContainer(path string) *Container {
 	iRepository := repo.NewRepository(db)
 	iUserService := user.NewUserService(iRepository, configConfig)
 	logger := log.NewLogger()
-	iFileService := file.NewFileService(iRepository, logger)
+	iFileService := file.NewFileService(iRepository, configConfig, logger)
 	iGlobalService := global_service.NewGlobalService(iRepository, logger)
 	iMessageService := message.NewMessageService(iRepository, configConfig, logger)
 	cacheCache := cache.NewCache()
 	iChatService := chat.NewChatService(cacheCache, logger)
 	iProjectService := project.NewProjectService(iRepository, iGlobalService, logger)
-	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService, iProjectService)
+	iAIChatService := aichat.NewAIChatService(configConfig, logger)
+	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService, iProjectService, iAIChatService)
 	return container
 }

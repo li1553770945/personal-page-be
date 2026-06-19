@@ -10,6 +10,7 @@ import (
 	"personal-page-be/biz/infra/database"
 	"personal-page-be/biz/infra/log"
 	"personal-page-be/biz/internal/repo"
+	"personal-page-be/biz/internal/service/aichat"
 	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
@@ -37,6 +38,7 @@ func GetContainer(path string) *Container {
 		message.NewMessageService,
 		chat.NewChatService,
 		project.NewProjectService,
+		aichat.NewAIChatService,
 
 		NewContainer,
 	))

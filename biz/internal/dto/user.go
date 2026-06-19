@@ -5,6 +5,7 @@ import "personal-page-be/biz/internal/domain"
 type UserDTO struct {
 	Username string `json:"username" vd:"len($)>5"`
 	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
 	Role     string `json:"role"`
 }
 
@@ -14,5 +15,6 @@ type GenerateActivateCodeReq struct {
 
 type RegisterReq struct {
 	domain.UserEntity
-	ActivateCode string `json:"activate_code" vd:"len($)>5"`
+	ActivateCode string `json:"activate_code"`
+	ActiveCode   string `json:"activeCode"`
 }

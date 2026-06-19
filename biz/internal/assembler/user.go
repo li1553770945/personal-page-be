@@ -9,6 +9,7 @@ func UserEntityToDTO(user *domain.UserEntity) *dto.UserDTO {
 	return &dto.UserDTO{
 		Username: user.Username,
 		Nickname: user.Nickname,
+		Avatar:   user.Avatar,
 		Role:     user.Role,
 	}
 }

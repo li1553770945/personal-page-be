@@ -2,235 +2,192 @@ package user
 
 import (
 	"context"
+	"time"
+
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hertz-contrib/sessions"
 	"golang.org/x/crypto/bcrypt"
 	"personal-page-be/biz/internal/assembler"
 	"personal-page-be/biz/internal/domain"
 	"personal-page-be/biz/internal/dto"
+	"personal-page-be/biz/internal/response"
 	U "personal-page-be/biz/internal/utils"
 )
 
 func (s *UserService) Login(ctx context.Context, c *app.RequestContext) {
-	var user domain.UserEntity
-	err := c.BindAndValidate(&user)
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+	var loginReq domain.UserEntity
+	if err := c.BindAndValidate(&loginReq); err != nil {
+		response.Error(c, 5001, err.Error())
 		return
 	}
-	findUser, err := s.Repo.FindUser(user.Username)
+
+	findUser, err := s.Repo.FindUser(loginReq.Username)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if findUser.ID == 0 {
+		response.Error(c, 4003, "用户名或密码错误")
 		return
 	}
 	if !findUser.IsActivate {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "用户未注册激活，请注册后使用",
-		})
+		response.Error(c, 4003, "用户未激活，请注册后使用")
 		return
 	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(user.Password))
-	if findUser.ID == 0 || err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "用户名或密码错误",
-		})
+	if err = bcrypt.CompareHashAndPassword([]byte(findUser.Password), []byte(loginReq.Password)); err != nil {
+		response.Error(c, 4003, "用户名或密码错误")
 		return
 	}
-
-	if findUser.CanUse == false {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "抱歉，您的账户已被禁用",
-		})
+	if !findUser.CanUse {
+		response.Error(c, 4003, "账号已被禁用")
 		return
 	}
 
 	session := sessions.Default(c)
-	session.Set("username", user.Username)
-	session.Save()
+	session.Set("username", findUser.Username)
+	_ = session.Save()
 
-	c.JSON(consts.StatusOK, utils.H{
-		"code": 0,
-		"msg":  "登陆成功",
-		"data": assembler.UserEntityToDTO(findUser),
-	})
+	token, err := s.issueToken(findUser)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	response.OK(c, utils.H{
+		"token": token,
+		"user":  assembler.UserEntityToDTO(findUser),
+	}, "登录成功")
 }
 
 func (*UserService) Logout(ctx context.Context, c *app.RequestContext) {
 	session := sessions.Default(c)
 	session.Delete("username")
-	session.Save()
-	c.JSON(consts.StatusOK, utils.H{
-		"code": 0,
-		"msg":  "登出成功",
-	})
-	return
+	_ = session.Save()
+	response.OK(c, nil, "登出成功")
 }
 
 func (s *UserService) GetUserInfo(ctx context.Context, c *app.RequestContext) {
-	username := ctx.Value("username")
-	user, err := s.Repo.FindUser(username.(string))
+	user, err := s.currentUser(ctx)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
 		return
 	}
-	c.JSON(consts.StatusOK, utils.H{
-		"code": 0,
-		"data": assembler.UserEntityToDTO(user),
-	})
+	if user.ID == 0 {
+		response.Error(c, 4004, "用户不存在")
+		return
+	}
+	response.OK(c, assembler.UserEntityToDTO(user), "ok")
 }
 
 func (s *UserService) GenerateActivateCode(ctx context.Context, c *app.RequestContext) {
-	username := ctx.Value("username")
-	user, err := s.Repo.FindUser(username.(string))
+	current, err := s.currentUser(ctx)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
 		return
 	}
-	if user.Role != "admin" {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "您无权执行此操作",
-		})
+	if current.Role != "admin" {
+		response.Error(c, 4003, "无权执行此操作")
 		return
 	}
 
 	var req dto.GenerateActivateCodeReq
-	err = c.BindAndValidate(&req)
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  "username必须大于5位" + err.Error(),
-		})
+	if err = c.BindAndValidate(&req); err != nil {
+		response.Error(c, 5001, "username 必须大于 5 位: "+err.Error())
 		return
 	}
 
-	registerUsername := req.Username
-	findUser, err := s.Repo.FindUser(registerUsername)
+	registerUser, err := s.Repo.FindUser(req.Username)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
 		return
 	}
-	if findUser.ID != 0 && findUser.IsActivate == true {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "用户名已被注册",
-		})
+	if registerUser.ID != 0 && registerUser.IsActivate {
+		response.Error(c, 4003, "用户名已被注册")
 		return
 	}
-
-	var RegisterUser *domain.UserEntity
-	if findUser.ID != 0 {
-		RegisterUser = findUser
-		RegisterUser.ActivateCode = U.RandSeq(10)
-	} else {
-		RegisterUser = &domain.UserEntity{
-			Username:     registerUsername,
-			IsActivate:   false,
-			CanUse:       true,
-			ActivateCode: U.RandSeq(10),
+	if registerUser.ID == 0 {
+		registerUser = &domain.UserEntity{
+			Username:   req.Username,
+			IsActivate: false,
+			CanUse:     true,
 		}
 	}
+	registerUser.ActivateCode = U.RandSeq(10)
 
-	err = s.Repo.SaveUser(RegisterUser)
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": "5001",
-			"msg":  "操作失败:" + err.Error(),
-		})
+	if err = s.Repo.SaveUser(registerUser); err != nil {
+		response.Error(c, 5001, "操作失败: "+err.Error())
 		return
 	}
-
-	c.JSON(consts.StatusOK, utils.H{
-		"code": "0",
-		"data": utils.H{
-			"activate_code": RegisterUser.ActivateCode,
-		},
-	})
-	return
+	response.OK(c, utils.H{
+		"activate_code": registerUser.ActivateCode,
+		"activeCode":    registerUser.ActivateCode,
+	}, "ok")
 }
 
 func (s *UserService) Register(ctx context.Context, c *app.RequestContext) {
 	var req dto.RegisterReq
-	err := c.BindAndValidate(&req)
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  "操作失败：" + err.Error(),
-		})
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 5001, "操作失败: "+err.Error())
 		return
 	}
 
+	activeCode := req.ActivateCode
+	if activeCode == "" {
+		activeCode = req.ActiveCode
+	}
 	findUser, err := s.Repo.FindUser(req.Username)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  "操作失败：" + err.Error(),
-		})
+		response.Error(c, 5001, "操作失败: "+err.Error())
 		return
 	}
 	if findUser.ID == 0 {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "请联系管理员获得激活码",
-		})
+		response.Error(c, 4003, "请联系管理员获得激活码")
+		return
+	}
+	if findUser.ActivateCode != activeCode {
+		response.Error(c, 4003, "激活码错误")
+		return
+	}
+	if findUser.IsActivate {
+		response.Error(c, 4003, "用户已经激活")
 		return
 	}
 
-	if findUser.ActivateCode != req.ActivateCode {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "激活码错误",
-		})
-		return
-	}
-
-	if findUser.IsActivate == true {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "用户已经激活",
-		})
-		return
-	}
-
-	findUser.IsActivate = true
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost) //加密处理
-	encodePWD := string(hash)                                                          // 保存在数据库的密码，虽然每次生成都不同，只需保存一份即可
-	findUser.Password = encodePWD
-	findUser.Nickname = req.Nickname
-	err = s.Repo.SaveUser(findUser)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  "操作失败:" + err.Error(),
-		})
+		response.Error(c, 5001, "密码加密失败: "+err.Error())
 		return
 	}
+	findUser.Password = string(hash)
+	findUser.Nickname = req.Nickname
+	findUser.IsActivate = true
+	findUser.CanUse = true
 
-	c.JSON(consts.StatusOK, utils.H{
-		"code": 0,
-		"msg":  "注册成功",
-	})
+	if err = s.Repo.SaveUser(findUser); err != nil {
+		response.Error(c, 5001, "操作失败: "+err.Error())
+		return
+	}
+	response.OK(c, nil, "注册成功")
+}
 
+func (s *UserService) currentUser(ctx context.Context) (*domain.UserEntity, error) {
+	if username, ok := ctx.Value("username").(string); ok && username != "" {
+		return s.Repo.FindUser(username)
+	}
+	if userID, ok := ctx.Value("userId").(uint); ok && userID != 0 {
+		return s.Repo.FindUserByID(userID)
+	}
+	return &domain.UserEntity{}, nil
+}
+
+func (s *UserService) issueToken(user *domain.UserEntity) (string, error) {
+	claims := jwt.MapClaims{
+		"userId":   user.ID,
+		"username": user.Username,
+		"role":     user.Role,
+		"exp":      time.Now().Add(14 * 24 * time.Hour).Unix(),
+		"iat":      time.Now().Unix(),
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(s.Config.EffectiveJWTKey()))
 }

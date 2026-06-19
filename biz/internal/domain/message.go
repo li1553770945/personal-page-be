@@ -10,6 +10,7 @@ type MessageCategoryEntity struct {
 	Value  string `json:"value"`
 	CanUse bool   `json:"can_use"`
 }
+
 type MessageEntity struct {
 	do.BaseModel
 	Category   MessageCategoryEntity `json:"category"`
@@ -28,4 +29,33 @@ type ReplyEntity struct {
 	Message   MessageEntity
 	MessageID uint `json:"message_id"`
 	HaveRead  bool `json:"have_read"`
+}
+
+type FeedbackCategoryEntity struct {
+	do.BaseModel
+	Name   string `json:"name"`
+	CanUse bool   `json:"can_use"`
+}
+
+type FeedbackEntity struct {
+	do.BaseModel
+	Category   FeedbackCategoryEntity `json:"category"`
+	CategoryID int                    `json:"category_id"`
+	Title      string                 `json:"title"`
+	Content    string                 `json:"content"`
+	Name       string                 `json:"name"`
+	Contact    string                 `json:"contact"`
+	HaveRead   bool                   `json:"have_read"`
+	UUID       string                 `json:"uuid"`
+}
+
+type FeedbackReplyEntity struct {
+	do.BaseModel
+	Content   string `json:"content"`
+	MessageID uint   `json:"message_id"`
+	HaveRead  bool   `json:"have_read"`
+}
+
+func (FeedbackReplyEntity) TableName() string {
+	return "reply_entities"
 }

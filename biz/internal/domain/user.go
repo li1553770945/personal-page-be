@@ -8,6 +8,7 @@ type UserEntity struct {
 	do.BaseModel
 	Username     string `vd:"len($)>5" gorm:"index:username_idx,unique"`
 	Nickname     string
+	Avatar       string
 	Password     string
 	Role         string
 	CanUse       bool

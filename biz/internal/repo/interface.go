@@ -7,13 +7,16 @@ import (
 
 type IRepository interface {
 	FindUser(username string) (*domain.UserEntity, error)
+	FindUserByID(userID uint) (*domain.UserEntity, error)
 	SaveUser(user *domain.UserEntity) error
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
+	FindFileByKey(fileKey string) (*domain.FileEntity, error)
 	FindFileBySaveName(saveName string) (*domain.FileEntity, error)
 	SaveFile(user *domain.FileEntity) error
 	RemoveFile(fileID uint) error
+	RemoveFileByKey(fileKey string) error
 
 	FindAllMessageCategory() (*[]domain.MessageCategoryEntity, error)
 	SaveMessage(entity *domain.MessageEntity) error
@@ -22,6 +25,14 @@ type IRepository interface {
 	SaveReply(entity *domain.ReplyEntity) error
 	FindMessageByID(messageId uint) (*domain.MessageEntity, error)
 	GetUnreadMsg() (*[]domain.MessageEntity, error)
+
+	FindAllFeedbackCategory() (*[]domain.FeedbackCategoryEntity, error)
+	SaveFeedback(entity *domain.FeedbackEntity) error
+	FindFeedbackByUUID(uuid string) (*domain.FeedbackEntity, error)
+	FindFeedbackByID(feedbackID uint) (*domain.FeedbackEntity, error)
+	FindReplyByFeedbackID(feedbackID uint) (*domain.FeedbackReplyEntity, error)
+	SaveFeedbackReply(entity *domain.FeedbackReplyEntity) error
+	GetUnreadFeedback() (*[]domain.FeedbackEntity, error)
 
 	SaveProject(project *domain.ProjectEntity) error
 	RemoveProject(projectID uint) error
@@ -35,29 +46,29 @@ type Repository struct {
 }
 
 func NewRepository(db *gorm.DB) IRepository {
-	err := db.AutoMigrate(&domain.UserEntity{})
-	if err != nil {
-		panic("迁移用户模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.UserEntity{}); err != nil {
+		panic("migrate user model failed: " + err.Error())
 	}
-	err = db.AutoMigrate(&domain.FileEntity{})
-	if err != nil {
-		panic("迁移文件模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
+		panic("migrate file model failed: " + err.Error())
 	}
-	err = db.AutoMigrate(&domain.MessageCategoryEntity{})
-	if err != nil {
-		panic("迁移消息类别模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.MessageCategoryEntity{}); err != nil {
+		panic("migrate message category model failed: " + err.Error())
 	}
-	err = db.AutoMigrate(&domain.MessageEntity{})
-	if err != nil {
-		panic("迁移消息模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.FeedbackCategoryEntity{}); err != nil {
+		panic("migrate feedback category model failed: " + err.Error())
 	}
-	err = db.AutoMigrate(&domain.ReplyEntity{})
-	if err != nil {
-		panic("迁移回复模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.MessageEntity{}); err != nil {
+		panic("migrate message model failed: " + err.Error())
 	}
-	err = db.AutoMigrate(&domain.ProjectEntity{})
-	if err != nil {
-		panic("迁移项目模型失败：" + err.Error())
+	if err := db.AutoMigrate(&domain.FeedbackEntity{}); err != nil {
+		panic("migrate feedback model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.ReplyEntity{}); err != nil {
+		panic("migrate reply model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.ProjectEntity{}); err != nil {
+		panic("migrate project model failed: " + err.Error())
 	}
 	return &Repository{
 		DB: db,

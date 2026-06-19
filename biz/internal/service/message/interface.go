@@ -20,6 +20,12 @@ type IMessageService interface {
 	AddReply(ctx context.Context, c *app.RequestContext)
 	GetReply(ctx context.Context, c *app.RequestContext)
 	GetMessages(ctx context.Context, c *app.RequestContext)
+	FindAllFeedbackCategories(ctx context.Context, c *app.RequestContext)
+	SaveFeedback(ctx context.Context, c *app.RequestContext)
+	AddFeedbackReply(ctx context.Context, c *app.RequestContext)
+	GetFeedbackReply(ctx context.Context, c *app.RequestContext)
+	GetFeedback(ctx context.Context, c *app.RequestContext)
+	GetUnreadFeedback(ctx context.Context, c *app.RequestContext)
 }
 
 func NewMessageService(repo repo.IRepository, config *config.Config, logger *logrus.Logger) IMessageService {

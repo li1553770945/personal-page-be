@@ -10,20 +10,28 @@ import (
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
 	api := r.Group("/api")
+	api.GET("/ping", App.GlobalService.HealthCheck)
+
+	authApi := api.Group("/auth")
+	authApi.POST("/login", App.UserService.Login)
 
 	userApi := api.Group("/users")
 
 	userApi.POST("/login", App.UserService.Login)
 	userApi.GET("/logout", App.UserService.Logout)
 	userApi.GET("/me", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
+	userApi.GET("/user-info", append(middlewire.UserMiddleware(), App.UserService.GetUserInfo)...)
 	userApi.POST("/activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
 	userApi.POST("/register", App.UserService.Register)
 
 	fileApi := api.Group("/files")
 
 	fileApi.POST("", append(middlewire.UserMiddleware(), App.FileService.UploadFile)...)
-	fileApi.GET("", App.FileService.DownloadFile)
+	fileApi.GET("", App.FileService.FileInfo)
+	fileApi.GET("/download", App.FileService.DownloadSignedFile)
+	fileApi.GET("/direct-download", App.FileService.DownloadFile)
 	fileApi.GET("/info", App.FileService.FileInfo)
+	fileApi.DELETE("", append(middlewire.UserMiddleware(), App.FileService.DeleteFile)...)
 	fileApi.DELETE("/:id", append(middlewire.UserMiddleware(), App.FileService.DeleteFile)...)
 
 	messageApi := api.Group("/messages")
@@ -33,11 +41,21 @@ func customizedRegister(r *server.Hertz) {
 	messageApi.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddReply)...)
 	messageApi.GET("", App.MessageService.GetMessages)
 
+	feedbackApi := api.Group("/feedback")
+	feedbackApi.GET("/categories", App.MessageService.FindAllFeedbackCategories)
+	feedbackApi.POST("", App.MessageService.SaveFeedback)
+	feedbackApi.GET("/reply", App.MessageService.GetFeedbackReply)
+	feedbackApi.POST("/reply", append(middlewire.UserMiddleware(), App.MessageService.AddFeedbackReply)...)
+	feedbackApi.GET("/unread", append(middlewire.UserMiddleware(), App.MessageService.GetUnreadFeedback)...)
+	feedbackApi.GET("", App.MessageService.GetFeedback)
+
 	projectsApi := api.Group("/projects")
 	projectsApi.GET("/num", App.ProjectService.GetNum)
 	projectsApi.GET("", App.ProjectService.GetProjects)
 	projectsApi.POST("", append(middlewire.UserMiddleware(), App.ProjectService.AddProject)...)
 	projectsApi.DELETE("/:id", append(middlewire.UserMiddleware(), App.ProjectService.RemoveProject)...)
+
+	api.POST("/aichat", App.AIChatService.SendMessage)
 
 	socket := r.Group("/socket")
 	{

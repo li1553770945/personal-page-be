@@ -3,227 +3,394 @@ package file
 import (
 	"context"
 	"fmt"
-	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	"github.com/google/uuid"
+	"mime/multipart"
+	"net/http"
+	"net/url"
 	"os"
-	"personal-page-be/biz/internal/constant"
-	"personal-page-be/biz/internal/domain"
-	U "personal-page-be/biz/internal/utils"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/utils"
+	"github.com/google/uuid"
+	"github.com/tencentyun/cos-go-sdk-v5"
+	"gorm.io/gorm"
+	"personal-page-be/biz/internal/constant"
+	"personal-page-be/biz/internal/domain"
+	"personal-page-be/biz/internal/dto"
+	"personal-page-be/biz/internal/response"
+	U "personal-page-be/biz/internal/utils"
 )
 
 func GenerateFileKey() string {
-	return U.RandSeq(4)
-
+	return U.RandSeq(8)
 }
+
 func Exists(path string) bool {
-	_, err := os.Stat(path) //os.Stat获取文件信息
+	_, err := os.Stat(path)
 	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
+		return os.IsExist(err)
 	}
 	return true
 }
+
 func (s *FileService) UploadFile(ctx context.Context, c *app.RequestContext) {
-	count, err := strconv.Atoi(string(c.FormValue("count")))
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{"code": 2001, "msg": "count序列化失败"})
+	if fileHeader, err := c.FormFile("file"); err == nil && fileHeader != nil {
+		s.uploadLocalFile(ctx, c, fileHeader)
 		return
 	}
-	if count == 0 {
+	s.uploadSignedFile(ctx, c)
+}
+
+func (s *FileService) uploadSignedFile(ctx context.Context, c *app.RequestContext) {
+	var req dto.SignedUploadFileReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 2001, "参数错误: "+err.Error())
+		return
+	}
+	if req.Name == "" {
+		response.Error(c, 2001, "文件名不能为空")
+		return
+	}
+	if req.Key != "" && !U.IsAlphanumeric(req.Key) {
+		response.Error(c, 2001, "文件 key 只能包含大小写字母和数字")
+		return
+	}
+	if req.Key == "" {
+		for {
+			req.Key = GenerateFileKey()
+			exists, err := s.Repo.FindFileByKey(req.Key)
+			if err != nil {
+				response.Error(c, 5001, err.Error())
+				return
+			}
+			if exists.ID == 0 {
+				break
+			}
+		}
+	} else {
+		exists, err := s.Repo.FindFileByKey(req.Key)
+		if err != nil {
+			response.Error(c, 5001, err.Error())
+			return
+		}
+		if exists.ID != 0 {
+			response.Error(c, 5002, "文件 key 已经存在，请更换")
+			return
+		}
+	}
+
+	entity := &domain.FileEntity{
+		Name:          req.Name,
+		Key:           req.Key,
+		MaxDownload:   req.MaxDownload,
+		DownloadCount: 0,
+		OSSPath:       s.generateFilePath(req.Name),
+	}
+	if err := s.Repo.SaveFile(entity); err != nil {
+		response.Error(c, 5001, "保存文件数据失败: "+err.Error())
+		return
+	}
+
+	signedURL, err := s.getSignedURL(ctx, http.MethodPut, entity.OSSPath, entity.Name)
+	if err != nil {
+		response.Error(c, 5001, "生成上传 URL 失败: "+err.Error())
+		return
+	}
+	response.OK(c, utils.H{
+		"signedUrl": signedURL,
+		"key":       entity.Key,
+	}, "ok")
+}
+
+func (s *FileService) uploadLocalFile(ctx context.Context, c *app.RequestContext, fileHeader *multipart.FileHeader) {
+	count, err := strconv.Atoi(string(c.FormValue("count")))
+	if err != nil || count == 0 {
 		count = -1
 	}
 
 	fileKey := string(c.FormValue("file_key"))
-	if !U.IsAlphanumeric(fileKey) {
-		c.JSON(consts.StatusOK, utils.H{"code": 2001, "msg": "文件key只能包含大小写字母和数字"})
-		return
-	}
 	if fileKey == "" {
 		fileKey = GenerateFileKey()
 	}
-	// 是否已经有文件
+	if !U.IsAlphanumeric(fileKey) {
+		response.Error(c, 2001, "文件 key 只能包含大小写字母和数字")
+		return
+	}
 
 	findFileEntity, err := s.Repo.FindFileByFileKey(fileKey)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{"code": 5001, "msg": "查询已有文件失败：" + err.Error()})
+		response.Error(c, 5001, "查询已有文件失败: "+err.Error())
 		return
 	}
 	if findFileEntity.ID != 0 {
-		c.JSON(consts.StatusOK, utils.H{"code": 5002, "msg": "文件key已经存在，请更换"})
+		response.Error(c, 5002, "文件 key 已经存在，请更换")
 		return
 	}
 
-	file, _ := c.FormFile("file")
-	if file == nil {
-		c.JSON(consts.StatusOK, utils.H{"code": 2001, "msg": "无文件"})
-		return
-	}
-
-	username := ctx.Value("username")
-	user, err := s.Repo.FindUser(username.(string))
+	username, _ := ctx.Value("username").(string)
+	user, err := s.Repo.FindUser(username)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
 		return
 	}
 
-	//生成文件持久化数据
-	u4 := uuid.New()
-	currentTime := time.Now()
-	timeString := currentTime.Format("2006-01-02_15_04_05")
-
+	saveName := fmt.Sprintf("%s_%s_%s", time.Now().Format("2006-01-02_15_04_05"), fileKey, uuid.New().String())
 	fileEntity := domain.FileEntity{
 		User:     *user,
 		UserID:   int(user.ID),
 		FileKey:  fileKey,
-		FileName: file.Filename,
+		FileName: fileHeader.Filename,
 		Count:    count,
-		SaveName: fmt.Sprintf("%s_%s_%s", timeString, fileKey, u4.String()),
+		SaveName: saveName,
 	}
-
-	if err != nil {
-		c.JSON(200, utils.H{"code": 2001, "msg": err.Error()})
+	if err = c.SaveUploadedFile(fileHeader, fmt.Sprintf("./%s/%s", constant.FileBasePath, fileEntity.SaveName)); err != nil {
+		response.Error(c, 5001, "保存文件失败: "+err.Error())
 		return
 	}
-
-	//保存文件
-	err = c.SaveUploadedFile(file, fmt.Sprintf("./%s/%s", constant.FileBasePath, fileEntity.SaveName))
-	if err != nil {
-		c.JSON(200, utils.H{"code": 5001, "msg": "保存文件失败:" + err.Error()})
+	if err = s.Repo.SaveFile(&fileEntity); err != nil {
+		response.Error(c, 5001, "保存文件数据失败: "+err.Error())
 		return
 	}
-
-	//保存文件模型
-	err = s.Repo.SaveFile(&fileEntity)
-	if err != nil {
-		c.JSON(200, utils.H{"code": 5001, "msg": "保存文件数据失败" + err.Error()})
-		return
-	}
-	c.JSON(200, utils.H{"code": 0, "msg": "上传成功", "data": fileEntity})
-	return
+	response.OK(c, fileEntity, "上传成功")
 }
 
-func (s *FileService) getFileInfo(fileKey string) (int, string, *domain.FileEntity) {
-	if fileKey == "" {
-		return 2001, "参数不合法，未提交file-key", nil
-	}
-
-	fileEntity, err := s.Repo.FindFileByFileKey(fileKey)
-	if err != nil {
-		return 5001, err.Error(), nil
-	}
-	if fileEntity.ID == 0 {
-		return 4004, "未找到相关key的文件", nil
-	}
-
-	return 0, "", fileEntity
-}
 func (s *FileService) FileInfo(ctx context.Context, c *app.RequestContext) {
-	code, msg, data := s.getFileInfo(c.DefaultQuery("file-key", ""))
-	c.JSON(consts.StatusOK, utils.H{
-		"code": code,
-		"msg":  msg,
-		"data": data,
-	})
+	key := queryKey(c)
+	if key == "" {
+		response.Error(c, 2001, "缺少文件 key")
+		return
+	}
 
+	entity, err := s.findFileByAnyKey(key)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if entity.ID == 0 {
+		response.Error(c, 4004, "未找到对应文件")
+		return
+	}
+	name := entity.Name
+	if name == "" {
+		name = entity.FileName
+	}
+	response.OK(c, utils.H{
+		"name":      name,
+		"key":       key,
+		"size":      0,
+		"createdAt": entity.CreatedAt.Unix(),
+	}, "ok")
+}
+
+func (s *FileService) DownloadSignedFile(ctx context.Context, c *app.RequestContext) {
+	key := queryKey(c)
+	if key == "" {
+		response.Error(c, 2001, "缺少文件 key")
+		return
+	}
+
+	entity, err := s.Repo.FindFileByKey(key)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if entity.ID == 0 {
+		response.Error(c, 4004, "未找到对应文件")
+		return
+	}
+
+	signedURL, err := s.getSignedURL(ctx, http.MethodGet, entity.OSSPath, entity.Name)
+	if err != nil {
+		response.Error(c, 5001, "生成下载 URL 失败: "+err.Error())
+		return
+	}
+	if entity.MaxDownload != 0 {
+		entity.DownloadCount++
+		if entity.DownloadCount >= entity.MaxDownload {
+			entity.ExpiredTime = gorm.DeletedAt{Time: time.Now(), Valid: true}
+			_ = s.deleteCOSObject(ctx, entity.OSSPath)
+			_ = s.Repo.RemoveFileByKey(entity.Key)
+		} else if err = s.Repo.SaveFile(entity); err != nil {
+			response.Error(c, 5001, "更新下载次数失败: "+err.Error())
+			return
+		}
+	}
+	response.OK(c, utils.H{
+		"signedUrl": signedURL,
+		"name":      entity.Name,
+	}, "ok")
 }
 
 func (s *FileService) DownloadFile(ctx context.Context, c *app.RequestContext) {
-	code, msg, data := s.getFileInfo(c.DefaultQuery("file-key", ""))
-	if code == 0 {
-		filePath := fmt.Sprintf("./%s/%s", constant.FileBasePath, data.SaveName)
-		if !Exists(fmt.Sprintf(filePath)) {
-			c.JSON(consts.StatusOK, utils.H{
-				"code": 4004,
-				"msg":  "文件记录存在，但文件数据已被删除",
-			})
-			return
+	key := queryKey(c)
+	if key == "" {
+		response.Error(c, 2001, "缺少文件 key")
+		return
+	}
+	entity, err := s.findFileByAnyKey(key)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if entity.ID == 0 || entity.SaveName == "" {
+		response.Error(c, 4004, "未找到可直出的本地文件")
+		return
+	}
+	filePath := fmt.Sprintf("./%s/%s", constant.FileBasePath, entity.SaveName)
+	if !Exists(filePath) {
+		response.Error(c, 4004, "文件记录存在，但文件数据已被删除")
+		return
+	}
+	c.FileAttachment(filePath, entity.FileName)
+	if entity.Count > 0 {
+		entity.Count--
+		if err = s.Repo.SaveFile(entity); err != nil {
+			s.Logger.Error("update file count failed: " + err.Error())
 		}
-		c.FileAttachment(filePath, data.FileName)
-
-		if data.Count > 0 {
-			data.Count--
-			err := s.Repo.SaveFile(data)
-			if err != nil {
-				s.Logger.Error("下载文件后，更新文件信息失败:" + err.Error())
-			}
-			return
-		}
-
-	} else {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": code,
-			"msg":  msg,
-		})
 	}
 }
 
 func (s *FileService) DeleteFile(ctx context.Context, c *app.RequestContext) {
-	fileID := c.Param("id")
+	if id := c.Param("id"); id != "" {
+		s.deleteLocalFileByID(ctx, c, id)
+		return
+	}
+
+	var req dto.DeleteFileReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 2001, "参数错误: "+err.Error())
+		return
+	}
+	if req.Key == "" {
+		response.Error(c, 2001, "缺少文件 key")
+		return
+	}
+	entity, err := s.Repo.FindFileByKey(req.Key)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if entity.ID == 0 {
+		response.Error(c, 4004, "未找到对应文件")
+		return
+	}
+	if err = s.deleteCOSObject(ctx, entity.OSSPath); err != nil {
+		response.Error(c, 5001, "删除 COS 文件失败: "+err.Error())
+		return
+	}
+	entity.DeleteOnOssTime = gorm.DeletedAt{Time: time.Now(), Valid: true}
+	_ = s.Repo.SaveFile(entity)
+	if err = s.Repo.RemoveFileByKey(req.Key); err != nil {
+		response.Error(c, 5001, "删除文件数据失败: "+err.Error())
+		return
+	}
+	response.OK(c, nil, "删除成功")
+}
+
+func (s *FileService) deleteLocalFileByID(ctx context.Context, c *app.RequestContext, fileID string) {
 	fileIDInt, err := strconv.ParseUint(fileID, 10, 64)
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 2001,
-			"msg":  "参数错误",
-		})
+		response.Error(c, 2001, "参数错误")
 		return
 	}
-
 	file, err := s.Repo.FindFileByID(uint(fileIDInt))
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
-	}
-
-	username := ctx.Value("username")
-	user, err := s.Repo.FindUser(username.(string))
-	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  err.Error(),
-		})
+		response.Error(c, 5001, err.Error())
 		return
 	}
-
+	username, _ := ctx.Value("username").(string)
+	user, err := s.Repo.FindUser(username)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
 	if uint(file.UserID) != user.ID && user.Role != "admin" {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 4003,
-			"msg":  "无权执行操作",
-		})
+		response.Error(c, 4003, "无权执行此操作")
 		return
 	}
+	if err = s.Repo.RemoveFile(file.ID); err != nil {
+		response.Error(c, 5001, "删除失败: "+err.Error())
+		return
+	}
+	response.OK(c, nil, "删除成功")
+}
 
-	err = s.Repo.RemoveFile(file.ID)
+func (s *FileService) findFileByAnyKey(key string) (*domain.FileEntity, error) {
+	entity, err := s.Repo.FindFileByKey(key)
+	if err != nil || entity.ID != 0 {
+		return entity, err
+	}
+	return s.Repo.FindFileByFileKey(key)
+}
+
+func queryKey(c *app.RequestContext) string {
+	if key := c.DefaultQuery("key", ""); key != "" {
+		return key
+	}
+	return c.DefaultQuery("file-key", "")
+}
+
+func (s *FileService) generateFilePath(fileName string) string {
+	now := time.Now()
+	return fmt.Sprintf("%d/%d/%d/%s%s", now.Year(), now.Month(), now.Day(), uuid.New().String(), filepath.Ext(fileName))
+}
+
+func (s *FileService) getSignedURL(ctx context.Context, method, ossPath, name string) (string, error) {
+	client, err := s.cosClient()
 	if err != nil {
-		c.JSON(consts.StatusOK, utils.H{
-			"code": 5001,
-			"msg":  "删除失败：" + err.Error(),
-		})
-		return
+		return "", err
 	}
-	c.JSON(consts.StatusOK, utils.H{
-		"code": 0,
-		"msg":  "删除成功",
-	})
-	return
+	opt := &cos.PresignedURLOptions{
+		Query:  &url.Values{},
+		Header: &http.Header{},
+	}
+	if method == http.MethodGet {
+		opt.Query.Add("response-content-disposition", fmt.Sprintf("attachment; filename=%s", name))
+	}
+	signedURL, err := client.Object.GetPresignedURL(ctx, method, ossPath, s.Config.EffectiveCOSAk(), s.Config.EffectiveCOSSk(), time.Hour, opt)
+	if err != nil {
+		return "", err
+	}
+	return signedURL.String(), nil
+}
 
+func (s *FileService) deleteCOSObject(ctx context.Context, ossPath string) error {
+	if ossPath == "" {
+		return nil
+	}
+	client, err := s.cosClient()
+	if err != nil {
+		return err
+	}
+	_, err = client.Object.Delete(ctx, ossPath)
+	return err
+}
+
+func (s *FileService) cosClient() (*cos.Client, error) {
+	endpoint := s.Config.EffectiveCOSEndpoint()
+	ak := s.Config.EffectiveCOSAk()
+	sk := s.Config.EffectiveCOSSk()
+	if endpoint == "" || ak == "" || sk == "" {
+		return nil, fmt.Errorf("COS config is incomplete")
+	}
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return cos.NewClient(&cos.BaseURL{BucketURL: u}, &http.Client{
+		Transport: &cos.AuthorizationTransport{
+			SecretID:  ak,
+			SecretKey: sk,
+		},
+	}), nil
 }
 
 func (s *FileService) getUserId(ctx context.Context) (uid int) {
-	username := ctx.Value("username")
-	user, err := s.Repo.FindUser(username.(string))
+	username, _ := ctx.Value("username").(string)
+	user, err := s.Repo.FindUser(username)
 	if err != nil {
-
 		return 0
 	}
 	return int(user.ID)
