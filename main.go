@@ -7,10 +7,14 @@ import (
 	"fmt"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/hertz-contrib/cors"
+	"github.com/hertz-contrib/obs-opentelemetry/provider"
+	hertztracing "github.com/hertz-contrib/obs-opentelemetry/tracing"
 	"github.com/hertz-contrib/sessions"
 	"github.com/hertz-contrib/sessions/cookie"
+	"os"
 	"personal-page-be/biz/container"
 	"personal-page-be/biz/middlewire"
+	"strings"
 	"time"
 )
 
@@ -20,7 +24,24 @@ func main() {
 	App = container.GetContainer("conf/config.yaml")
 	middlewire.InitAuth(App.Config.EffectiveJWTKey())
 
-	h := server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
+	var h *server.Hertz
+	if endpoint := otelEndpoint(); endpoint != "" {
+		p := provider.NewOpenTelemetryProvider(
+			provider.WithServiceName(otelServiceName()),
+			provider.WithExportEndpoint(endpoint),
+			provider.WithInsecure(),
+		)
+		defer func() {
+			_ = p.Shutdown(context.Background())
+		}()
+
+		tracer, cfg := hertztracing.NewServerTracer()
+		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
+		h.Use(hertztracing.ServerMiddleware(cfg))
+	} else {
+		h = server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
+	}
+
 	store := cookie.NewStore([]byte("secret"))
 	h.Use(sessions.New("user", store))
 	h.Use(cors.New(cors.Config{
@@ -39,4 +60,22 @@ func main() {
 		fmt.Println("hook 2")
 	})
 	h.Spin()
+}
+
+func otelEndpoint() string {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		endpoint = os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+	}
+	endpoint = strings.TrimSpace(endpoint)
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+	return strings.TrimRight(endpoint, "/")
+}
+
+func otelServiceName() string {
+	if serviceName := strings.TrimSpace(os.Getenv("OTEL_SERVICE_NAME")); serviceName != "" {
+		return serviceName
+	}
+	return "personal-page-be"
 }
