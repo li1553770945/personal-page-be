@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/hertz-contrib/cors"
 	"github.com/hertz-contrib/obs-opentelemetry/provider"
@@ -35,7 +36,7 @@ func main() {
 			_ = p.Shutdown(context.Background())
 		}()
 
-		tracer, cfg := hertztracing.NewServerTracer()
+		tracer, cfg := hertztracing.NewServerTracer(hertztracing.WithShouldIgnore(ignoreOTelTrace))
 		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
 		h.Use(hertztracing.ServerMiddleware(cfg))
 	} else {
@@ -78,4 +79,8 @@ func otelServiceName() string {
 		return serviceName
 	}
 	return "personal-page-be"
+}
+
+func ignoreOTelTrace(ctx context.Context, c *app.RequestContext) bool {
+	return string(c.Path()) == "/api/ping"
 }
