@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func SendServerMessage(key string, title string, message string, logger *logrus.Logger) {
@@ -15,34 +17,54 @@ func SendServerMessage(key string, title string, message string, logger *logrus.
 	payload, _ := json.Marshal(data)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	if req == nil {
-		logger.Error("发送消息失败，构建req为nil")
-		return
-	}
 	if err != nil {
-		logger.Error("发送消息失败，构建req失败", err.Error())
+		logger.WithError(err).Error("send ServerChan message failed: build request")
 		return
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
-	if resp == nil {
-		logger.Error("发送消息失败，返回值为nil")
-		return
-	}
 	if err != nil {
-		logger.Error("发送消息失败:", err.Error())
+		logger.WithError(err).Error("send ServerChan message failed")
 		return
 	}
-	if resp.StatusCode != 200 {
-		logger.Error("发送消息失败，状态码：", resp.StatusCode)
+	if resp == nil {
+		logger.Error("send ServerChan message failed: nil response")
 		return
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
+	defer resp.Body.Close()
 
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		logger.WithError(readErr).Error("send ServerChan message failed: read response")
+		return
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		logger.WithFields(logrus.Fields{
+			"status": resp.StatusCode,
+			"body":   string(body),
+		}).Error("send ServerChan message failed: bad status")
+		return
+	}
+
+	var result struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+			Error string `json:"error"`
+			Errno int    `json:"errno"`
+		} `json:"data"`
+	}
+	if len(body) > 0 && json.Unmarshal(body, &result) == nil {
+		if result.Code != 0 || result.Data.Errno != 0 || (result.Data.Error != "" && result.Data.Error != "SUCCESS") {
+			logger.WithFields(logrus.Fields{
+				"code":    result.Code,
+				"message": result.Message,
+				"error":   result.Data.Error,
+				"errno":   result.Data.Errno,
+			}).Error("send ServerChan message failed: rejected")
 		}
-	}(resp.Body)
+	}
 }

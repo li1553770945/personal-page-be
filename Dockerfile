@@ -13,6 +13,7 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/personal-page-be /app/personal-page-be
 
 EXPOSE 9101
