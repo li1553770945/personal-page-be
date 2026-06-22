@@ -24,9 +24,16 @@ func customizedRegister(r *server.Hertz) {
 	userApi.POST("/activate-code", append(middlewire.UserMiddleware(), App.UserService.GenerateActivateCode)...)
 	userApi.POST("/register", App.UserService.Register)
 
+	adminApi := api.Group("/admin")
+	adminApi.GET("/users", append(middlewire.UserMiddleware(), App.UserService.ListUsers)...)
+	adminApi.POST("/users/:id/role", append(middlewire.UserMiddleware(), App.UserService.UpdateUserRole)...)
+	adminApi.POST("/users/:id/status", append(middlewire.UserMiddleware(), App.UserService.UpdateUserStatus)...)
+	adminApi.GET("/files", append(middlewire.UserMiddleware(), App.FileService.ListAllFiles)...)
+
 	fileApi := api.Group("/files")
 
 	fileApi.POST("", append(middlewire.UserMiddleware(), App.FileService.UploadFile)...)
+	fileApi.GET("/mine", append(middlewire.UserMiddleware(), App.FileService.ListMyFiles)...)
 	fileApi.GET("", App.FileService.FileInfo)
 	fileApi.GET("/download", App.FileService.DownloadSignedFile)
 	fileApi.GET("/direct-download", App.FileService.DownloadFile)

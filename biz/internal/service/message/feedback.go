@@ -183,7 +183,7 @@ func (s *MessageService) ensureAdmin(ctx context.Context, c *app.RequestContext)
 		response.Error(c, 5001, err.Error())
 		return false
 	}
-	if user.Role != "admin" {
+	if !domain.IsAdminRole(user.Role) {
 		response.Error(c, 4003, "无权执行此操作")
 		return false
 	}

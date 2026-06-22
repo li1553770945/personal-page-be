@@ -8,12 +8,16 @@ import (
 type IRepository interface {
 	FindUser(username string) (*domain.UserEntity, error)
 	FindUserByID(userID uint) (*domain.UserEntity, error)
+	FindFirstUserByRole(role string) (*domain.UserEntity, error)
+	ListUsers() (*[]domain.UserEntity, error)
+	CountUsersByRole(role string, canUseOnly bool) (int64, error)
 	SaveUser(user *domain.UserEntity) error
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
 	FindFileByKey(fileKey string) (*domain.FileEntity, error)
 	FindFileBySaveName(saveName string) (*domain.FileEntity, error)
+	ListFiles(userID *uint) (*[]domain.FileEntity, error)
 	SaveFile(user *domain.FileEntity) error
 	RemoveFile(fileID uint) error
 	RemoveFileByKey(fileKey string) error

@@ -39,12 +39,17 @@ type NotifyConfig struct {
 	ServerChanKey string `yaml:"server-chan-key"`
 }
 
+type SiteConfig struct {
+	SuperAdminUsername string `yaml:"super_admin_username"`
+}
+
 type Config struct {
 	DatabaseConfig DatabaseConfig `yaml:"database"`
 	HttpConfig     HttpConfig     `yaml:"http"`
 	CosConfig      CosConfig      `yaml:"cos"`
 	AIChatConfig   AIChatConfig   `yaml:"aichat"`
 	NotifyConfig   NotifyConfig   `yaml:"notify"`
+	SiteConfig     SiteConfig     `yaml:"site"`
 }
 
 func InitConfig(path string) *Config {
@@ -123,4 +128,11 @@ func (c *Config) EffectiveAIChatURL() string {
 		return c.AIChatConfig.URL
 	}
 	return "https://api.dify.ai/v1/chat-messages"
+}
+
+func (c *Config) EffectiveSuperAdminUsername() string {
+	if v := os.Getenv("PERSONAL_PAGE_SUPER_ADMIN_USERNAME"); v != "" {
+		return v
+	}
+	return c.SiteConfig.SuperAdminUsername
 }

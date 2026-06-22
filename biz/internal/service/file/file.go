@@ -81,7 +81,13 @@ func (s *FileService) uploadSignedFile(ctx context.Context, c *app.RequestContex
 		}
 	}
 
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
+		return
+	}
 	entity := &domain.FileEntity{
+		User:          *user,
+		UserID:        int(user.ID),
 		Name:          req.Name,
 		Key:           req.Key,
 		MaxDownload:   req.MaxDownload,
@@ -129,10 +135,8 @@ func (s *FileService) uploadLocalFile(ctx context.Context, c *app.RequestContext
 		return
 	}
 
-	username, _ := ctx.Value("username").(string)
-	user, err := s.Repo.FindUser(username)
-	if err != nil {
-		response.Error(c, 5001, err.Error())
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
 		return
 	}
 
@@ -252,9 +256,40 @@ func (s *FileService) DownloadFile(ctx context.Context, c *app.RequestContext) {
 	}
 }
 
+func (s *FileService) ListMyFiles(ctx context.Context, c *app.RequestContext) {
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
+		return
+	}
+	userID := user.ID
+	files, err := s.Repo.ListFiles(&userID)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	response.OK(c, fileEntitiesToDTO(files), "ok")
+}
+
+func (s *FileService) ListAllFiles(ctx context.Context, c *app.RequestContext) {
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
+		return
+	}
+	if !domain.IsSuperAdminRole(user.Role) {
+		response.Error(c, 4003, "无权执行此操作")
+		return
+	}
+	files, err := s.Repo.ListFiles(nil)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	response.OK(c, fileEntitiesToDTO(files), "ok")
+}
+
 func (s *FileService) DeleteFile(ctx context.Context, c *app.RequestContext) {
 	if id := c.Param("id"); id != "" {
-		s.deleteLocalFileByID(ctx, c, id)
+		s.deleteFileByID(ctx, c, id)
 		return
 	}
 
@@ -267,7 +302,7 @@ func (s *FileService) DeleteFile(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 2001, "缺少文件 key")
 		return
 	}
-	entity, err := s.Repo.FindFileByKey(req.Key)
+	entity, err := s.findFileByAnyKey(req.Key)
 	if err != nil {
 		response.Error(c, 5001, err.Error())
 		return
@@ -276,20 +311,30 @@ func (s *FileService) DeleteFile(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 4004, "未找到对应文件")
 		return
 	}
-	if err = s.deleteCOSObject(ctx, entity.OSSPath); err != nil {
-		response.Error(c, 5001, "删除 COS 文件失败: "+err.Error())
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
 		return
 	}
-	entity.DeleteOnOssTime = gorm.DeletedAt{Time: time.Now(), Valid: true}
-	_ = s.Repo.SaveFile(entity)
-	if err = s.Repo.RemoveFileByKey(req.Key); err != nil {
+	if !canManageFile(user, entity) {
+		response.Error(c, 4003, "无权执行此操作")
+		return
+	}
+	if entity.OSSPath != "" {
+		if err = s.deleteCOSObject(ctx, entity.OSSPath); err != nil {
+			response.Error(c, 5001, "删除 COS 文件失败: "+err.Error())
+			return
+		}
+		entity.DeleteOnOssTime = gorm.DeletedAt{Time: time.Now(), Valid: true}
+		_ = s.Repo.SaveFile(entity)
+	}
+	if err = s.Repo.RemoveFile(entity.ID); err != nil {
 		response.Error(c, 5001, "删除文件数据失败: "+err.Error())
 		return
 	}
 	response.OK(c, nil, "删除成功")
 }
 
-func (s *FileService) deleteLocalFileByID(ctx context.Context, c *app.RequestContext, fileID string) {
+func (s *FileService) deleteFileByID(ctx context.Context, c *app.RequestContext, fileID string) {
 	fileIDInt, err := strconv.ParseUint(fileID, 10, 64)
 	if err != nil {
 		response.Error(c, 2001, "参数错误")
@@ -300,15 +345,22 @@ func (s *FileService) deleteLocalFileByID(ctx context.Context, c *app.RequestCon
 		response.Error(c, 5001, err.Error())
 		return
 	}
-	username, _ := ctx.Value("username").(string)
-	user, err := s.Repo.FindUser(username)
-	if err != nil {
-		response.Error(c, 5001, err.Error())
+	if file.ID == 0 {
+		response.Error(c, 4004, "未找到对应文件")
 		return
 	}
-	if uint(file.UserID) != user.ID && user.Role != "admin" {
+	user, ok := s.requireCurrentUser(ctx, c)
+	if !ok {
+		return
+	}
+	if !canManageFile(user, file) {
 		response.Error(c, 4003, "无权执行此操作")
 		return
+	}
+	if file.OSSPath != "" {
+		_ = s.deleteCOSObject(ctx, file.OSSPath)
+		file.DeleteOnOssTime = gorm.DeletedAt{Time: time.Now(), Valid: true}
+		_ = s.Repo.SaveFile(file)
 	}
 	if err = s.Repo.RemoveFile(file.ID); err != nil {
 		response.Error(c, 5001, "删除失败: "+err.Error())
@@ -394,4 +446,55 @@ func (s *FileService) getUserId(ctx context.Context) (uid int) {
 		return 0
 	}
 	return int(user.ID)
+}
+
+func (s *FileService) requireCurrentUser(ctx context.Context, c *app.RequestContext) (*domain.UserEntity, bool) {
+	username, _ := ctx.Value("username").(string)
+	user, err := s.Repo.FindUser(username)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return nil, false
+	}
+	if user.ID == 0 || !user.CanUse {
+		response.Error(c, 4003, "未登录")
+		return nil, false
+	}
+	user.Role = domain.NormalizeRole(user.Role)
+	return user, true
+}
+
+func canManageFile(user *domain.UserEntity, file *domain.FileEntity) bool {
+	return uint(file.UserID) == user.ID || domain.IsAdminRole(user.Role)
+}
+
+func fileEntitiesToDTO(files *[]domain.FileEntity) []*dto.FileDTO {
+	result := make([]*dto.FileDTO, 0, len(*files))
+	for i := range *files {
+		file := &(*files)[i]
+		name := file.Name
+		if name == "" {
+			name = file.FileName
+		}
+		key := file.Key
+		kind := "object"
+		if key == "" {
+			key = file.FileKey
+			kind = "local"
+		}
+		result = append(result, &dto.FileDTO{
+			ID:            file.ID,
+			UserID:        file.UserID,
+			Username:      file.User.Username,
+			Nickname:      file.User.Nickname,
+			Name:          name,
+			Key:           key,
+			Kind:          kind,
+			Count:         file.Count,
+			MaxDownload:   file.MaxDownload,
+			DownloadCount: file.DownloadCount,
+			CreatedAt:     file.CreatedAt.Unix(),
+			UpdatedAt:     file.UpdatedAt.Unix(),
+		})
+	}
+	return result
 }

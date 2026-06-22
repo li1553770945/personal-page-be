@@ -19,6 +19,8 @@ type IFileService interface {
 	DownloadFile(ctx context.Context, c *app.RequestContext)
 	DownloadSignedFile(ctx context.Context, c *app.RequestContext)
 	FileInfo(ctx context.Context, c *app.RequestContext)
+	ListMyFiles(ctx context.Context, c *app.RequestContext)
+	ListAllFiles(ctx context.Context, c *app.RequestContext)
 	DeleteFile(ctx context.Context, c *app.RequestContext)
 }
 

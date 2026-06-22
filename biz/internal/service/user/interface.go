@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+
 	"github.com/cloudwego/hertz/pkg/app"
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/internal/repo"
@@ -18,11 +19,16 @@ type IUserService interface {
 	GetUserInfo(ctx context.Context, c *app.RequestContext)
 	GenerateActivateCode(ctx context.Context, c *app.RequestContext)
 	Register(ctx context.Context, c *app.RequestContext)
+	ListUsers(ctx context.Context, c *app.RequestContext)
+	UpdateUserRole(ctx context.Context, c *app.RequestContext)
+	UpdateUserStatus(ctx context.Context, c *app.RequestContext)
 }
 
 func NewUserService(repo repo.IRepository, config *config.Config) IUserService {
-	return &UserService{
+	s := &UserService{
 		Repo:   repo,
 		Config: config,
 	}
+	_ = s.ensureSuperAdminBootstrap()
+	return s
 }

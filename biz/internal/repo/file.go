@@ -60,3 +60,16 @@ func (Repo *Repository) FindFileBySaveName(saveName string) (*domain.FileEntity,
 	}
 	return &file, nil
 }
+
+func (Repo *Repository) ListFiles(userID *uint) (*[]domain.FileEntity, error) {
+	var files []domain.FileEntity
+	query := Repo.DB.Preload("User").Order("created_at desc")
+	if userID != nil {
+		query = query.Where("user_id = ?", *userID)
+	}
+	err := query.Find(&files).Error
+	if err != nil {
+		return nil, err
+	}
+	return &files, nil
+}

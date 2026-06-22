@@ -106,7 +106,7 @@ func (s *MessageService) AddReply(ctx context.Context, c *app.RequestContext) {
 		})
 		return
 	}
-	if user.Role != "admin" {
+	if !domain.IsAdminRole(user.Role) {
 		c.JSON(consts.StatusOK, utils.H{
 			"code": 4003,
 			"msg":  "您无权执行此操作",
@@ -204,7 +204,7 @@ func (s *MessageService) GetMessages(ctx context.Context, c *app.RequestContext)
 			return
 		}
 
-		if user.Role != "admin" {
+		if !domain.IsAdminRole(user.Role) {
 			c.JSON(consts.StatusOK, utils.H{
 				"code": 4003,
 				"msg":  "您无权执行此操作",

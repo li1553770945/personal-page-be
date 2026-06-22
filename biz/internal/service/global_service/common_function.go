@@ -18,7 +18,7 @@ func (s *GlobalService) CheckLogin(c *app.RequestContext, needAdmin bool) (*erro
 		return error_type.ErrNotLogin, nil
 	}
 
-	if needAdmin && user.Role != "admin" {
+	if needAdmin && !domain.IsAdminRole(user.Role) {
 		return error_type.ErrNotPermitted, nil
 	}
 	return nil, user
