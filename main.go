@@ -36,9 +36,9 @@ func main() {
 			_ = p.Shutdown(context.Background())
 		}()
 
-		tracer, cfg := hertztracing.NewServerTracer(hertztracing.WithShouldIgnore(ignoreOTelTrace))
+		tracer, cfg := hertztracing.NewServerTracer()
 		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
-		h.Use(hertztracing.ServerMiddleware(cfg))
+		h.Use(skipPingTrace(hertztracing.ServerMiddleware(cfg)))
 	} else {
 		h = server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
 	}
@@ -81,6 +81,12 @@ func otelServiceName() string {
 	return "personal-page-be"
 }
 
-func ignoreOTelTrace(ctx context.Context, c *app.RequestContext) bool {
-	return string(c.Path()) == "/api/ping"
+func skipPingTrace(next app.HandlerFunc) app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		if string(c.Path()) == "/api/ping" {
+			c.Next(ctx)
+			return
+		}
+		next(ctx, c)
+	}
 }
