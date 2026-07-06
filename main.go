@@ -21,6 +21,8 @@ import (
 
 var App *container.Container
 
+const maxRequestBodySize = 512 * 1024 * 1024
+
 func main() {
 	App = container.GetContainer("conf/config.yaml")
 	middlewire.InitAuth(App.Config.EffectiveJWTKey())
@@ -37,10 +39,10 @@ func main() {
 		}()
 
 		tracer, cfg := hertztracing.NewServerTracer()
-		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
+		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(maxRequestBodySize))
 		h.Use(skipPingTrace(hertztracing.ServerMiddleware(cfg)))
 	} else {
-		h = server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(100*1024*1024))
+		h = server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(maxRequestBodySize))
 	}
 
 	store := cookie.NewStore([]byte("secret"))

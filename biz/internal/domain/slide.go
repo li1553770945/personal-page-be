@@ -16,4 +16,5 @@ type SlideEntity struct {
 	Tags            string `gorm:"type:text" json:"tags"`
 	Protected       bool   `json:"protected"`
 	PasswordHash    string `json:"-"`
+	PasswordCipher  string `gorm:"type:text" json:"-"`
 }

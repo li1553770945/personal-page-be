@@ -32,6 +32,7 @@ type SlideDTO struct {
 	ObjectPrefix    string   `json:"objectPrefix"`
 	Tags            []string `json:"tags"`
 	Protected       bool     `json:"protected"`
+	Password        string   `json:"password,omitempty"`
 	HasPassword     bool     `json:"has_password"`
 	CreatedAt       int64    `json:"created_at"`
 	UpdatedAt       int64    `json:"updated_at"`

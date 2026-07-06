@@ -4,7 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -42,7 +45,7 @@ func (s *SlideService) ListPublicSlides(ctx context.Context, c *app.RequestConte
 		response.Error(c, 5001, err.Error())
 		return
 	}
-	response.OK(c, slideEntitiesToPublicDTO(slides), "ok")
+	response.OK(c, s.slideEntitiesToPublicDTO(slides), "ok")
 }
 
 func (s *SlideService) ListAdminSlides(ctx context.Context, c *app.RequestContext) {
@@ -54,7 +57,7 @@ func (s *SlideService) ListAdminSlides(ctx context.Context, c *app.RequestContex
 		response.Error(c, 5001, err.Error())
 		return
 	}
-	response.OK(c, slideEntitiesToDTO(slides), "ok")
+	response.OK(c, s.slideEntitiesToDTO(slides), "ok")
 }
 
 func (s *SlideService) CreateSlide(ctx context.Context, c *app.RequestContext) {
@@ -82,7 +85,7 @@ func (s *SlideService) CreateSlide(ctx context.Context, c *app.RequestContext) {
 	req.Slug = slug
 
 	entity := &domain.SlideEntity{}
-	if err := applySlideReq(entity, &req, true); err != nil {
+	if err := s.applySlideReq(entity, &req, true); err != nil {
 		response.Error(c, 2001, err.Error())
 		return
 	}
@@ -90,7 +93,7 @@ func (s *SlideService) CreateSlide(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 5001, "保存幻灯片失败: "+err.Error())
 		return
 	}
-	response.OK(c, slideEntityToDTO(entity), "ok")
+	response.OK(c, s.slideEntityToDTO(entity, true), "ok")
 }
 
 func (s *SlideService) UpdateSlide(ctx context.Context, c *app.RequestContext) {
@@ -135,7 +138,7 @@ func (s *SlideService) UpdateSlide(ctx context.Context, c *app.RequestContext) {
 		}
 		req.Slug = slug
 	}
-	if err := applySlideReq(entity, &req, false); err != nil {
+	if err := s.applySlideReq(entity, &req, false); err != nil {
 		response.Error(c, 2001, err.Error())
 		return
 	}
@@ -143,7 +146,7 @@ func (s *SlideService) UpdateSlide(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 5001, "保存幻灯片失败: "+err.Error())
 		return
 	}
-	response.OK(c, slideEntityToDTO(entity), "ok")
+	response.OK(c, s.slideEntityToDTO(entity, true), "ok")
 }
 
 func (s *SlideService) DeleteSlide(ctx context.Context, c *app.RequestContext) {
@@ -280,7 +283,7 @@ func (s *SlideService) UnlockSlide(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	if !entity.Protected {
-		response.OK(c, slideEntityToDTO(entity), "ok")
+		response.OK(c, s.slideEntityToDTO(entity, false), "ok")
 		return
 	}
 
@@ -294,7 +297,7 @@ func (s *SlideService) UnlockSlide(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.SetCookie(slideAccessCookieName(slug), s.issueSlideAccessToken(slug), slideAccessMaxAgeSeconds, "/", "", protocol.CookieSameSiteLaxMode, true, true)
-	response.OK(c, slideEntityToDTO(entity), "ok")
+	response.OK(c, s.slideEntityToDTO(entity, false), "ok")
 }
 
 func (s *SlideService) ServeSlideAsset(ctx context.Context, c *app.RequestContext) {
@@ -368,7 +371,7 @@ func validateSlideReq(req *dto.SaveSlideReq) error {
 	return nil
 }
 
-func applySlideReq(entity *domain.SlideEntity, req *dto.SaveSlideReq, creating bool) error {
+func (s *SlideService) applySlideReq(entity *domain.SlideEntity, req *dto.SaveSlideReq, creating bool) error {
 	entity.Slug = req.Slug
 	entity.Title = req.Title
 	entity.TitleEn = req.TitleEn
@@ -395,26 +398,32 @@ func applySlideReq(entity *domain.SlideEntity, req *dto.SaveSlideReq, creating b
 			if err != nil {
 				return err
 			}
+			cipherText, err := s.encryptSlidePassword(password)
+			if err != nil {
+				return err
+			}
 			entity.PasswordHash = string(hash)
+			entity.PasswordCipher = cipherText
 		}
 	} else {
 		entity.PasswordHash = ""
+		entity.PasswordCipher = ""
 	}
 	return nil
 }
 
-func slideEntitiesToDTO(slides *[]domain.SlideEntity) []*dto.SlideDTO {
+func (s *SlideService) slideEntitiesToDTO(slides *[]domain.SlideEntity) []*dto.SlideDTO {
 	result := make([]*dto.SlideDTO, 0, len(*slides))
 	for i := range *slides {
-		result = append(result, slideEntityToDTO(&(*slides)[i]))
+		result = append(result, s.slideEntityToDTO(&(*slides)[i], true))
 	}
 	return result
 }
 
-func slideEntitiesToPublicDTO(slides *[]domain.SlideEntity) []*dto.SlideDTO {
+func (s *SlideService) slideEntitiesToPublicDTO(slides *[]domain.SlideEntity) []*dto.SlideDTO {
 	result := make([]*dto.SlideDTO, 0, len(*slides))
 	for i := range *slides {
-		item := slideEntityToDTO(&(*slides)[i])
+		item := s.slideEntityToDTO(&(*slides)[i], false)
 		if item.Protected {
 			item.Entry = "/slides/protected?id=" + item.ID
 		}
@@ -423,10 +432,16 @@ func slideEntitiesToPublicDTO(slides *[]domain.SlideEntity) []*dto.SlideDTO {
 	return result
 }
 
-func slideEntityToDTO(slide *domain.SlideEntity) *dto.SlideDTO {
+func (s *SlideService) slideEntityToDTO(slide *domain.SlideEntity, includePassword bool) *dto.SlideDTO {
 	cover := slide.Cover
 	if slide.CoverObjectPath != "" {
 		cover = "/api/slides/" + slide.Slug + "/cover"
+	}
+	password := ""
+	if includePassword && slide.PasswordCipher != "" {
+		if value, err := s.decryptSlidePassword(slide.PasswordCipher); err == nil {
+			password = value
+		}
 	}
 	return &dto.SlideDTO{
 		DatabaseID:      slide.ID,
@@ -441,6 +456,7 @@ func slideEntityToDTO(slide *domain.SlideEntity) *dto.SlideDTO {
 		ObjectPrefix:    slide.ObjectPrefix,
 		Tags:            decodeTags(slide.Tags),
 		Protected:       slide.Protected,
+		Password:        password,
 		HasPassword:     slide.PasswordHash != "",
 		CreatedAt:       slide.CreatedAt.Unix(),
 		UpdatedAt:       slide.UpdatedAt.Unix(),
@@ -480,6 +496,51 @@ func decodeTags(value string) []string {
 		}
 	}
 	return tags
+}
+
+func (s *SlideService) encryptSlidePassword(password string) (string, error) {
+	key := sha256.Sum256([]byte(s.Config.EffectiveJWTKey()))
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	cipherText := gcm.Seal(nil, nonce, []byte(password), nil)
+	raw := append(nonce, cipherText...)
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+func (s *SlideService) decryptSlidePassword(value string) (string, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return "", err
+	}
+	key := sha256.Sum256([]byte(s.Config.EffectiveJWTKey()))
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(raw) < gcm.NonceSize() {
+		return "", fmt.Errorf("invalid slide password payload")
+	}
+	nonce := raw[:gcm.NonceSize()]
+	cipherText := raw[gcm.NonceSize():]
+	plain, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(plain), nil
 }
 
 func validateSlideSlug(slug string) error {
