@@ -70,15 +70,16 @@ func (s *SlideService) CreateSlide(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 2001, err.Error())
 		return
 	}
-	exists, err := s.Repo.FindSlideBySlug(req.Slug)
+	slug, duplicate, err := s.prepareSlideSlug(req.Slug, 0, true)
 	if err != nil {
 		response.Error(c, 5001, err.Error())
 		return
 	}
-	if exists.ID != 0 {
+	if duplicate {
 		response.Error(c, 5002, "幻灯片 id 已存在")
 		return
 	}
+	req.Slug = slug
 
 	entity := &domain.SlideEntity{}
 	if err := applySlideReq(entity, &req, true); err != nil {
@@ -120,16 +121,19 @@ func (s *SlideService) UpdateSlide(ctx context.Context, c *app.RequestContext) {
 		response.Error(c, 2001, err.Error())
 		return
 	}
-	if req.Slug != entity.Slug {
-		exists, err := s.Repo.FindSlideBySlug(req.Slug)
+	if req.Slug == "" {
+		req.Slug = entity.Slug
+	} else {
+		slug, duplicate, err := s.prepareSlideSlug(req.Slug, entity.ID, false)
 		if err != nil {
 			response.Error(c, 5001, err.Error())
 			return
 		}
-		if exists.ID != 0 && exists.ID != entity.ID {
+		if duplicate {
 			response.Error(c, 5002, "幻灯片 id 已存在")
 			return
 		}
+		req.Slug = slug
 	}
 	if err := applySlideReq(entity, &req, false); err != nil {
 		response.Error(c, 2001, err.Error())
@@ -171,9 +175,14 @@ func (s *SlideService) UploadSlideDeck(ctx context.Context, c *app.RequestContex
 	if _, ok := s.requireSuperAdmin(ctx, c); !ok {
 		return
 	}
-	slug := strings.TrimSpace(string(c.FormValue("id")))
-	if err := validateSlideSlug(slug); err != nil {
-		response.Error(c, 2001, err.Error())
+	currentID := parseOptionalSlideDatabaseID(string(c.FormValue("databaseId")))
+	slug, duplicate, err := s.prepareSlideSlug(string(c.FormValue("id")), currentID, true)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if duplicate {
+		response.Error(c, 5002, "幻灯片 id 已存在")
 		return
 	}
 	fileHeader, err := c.FormFile("file")
@@ -202,6 +211,7 @@ func (s *SlideService) UploadSlideDeck(ctx context.Context, c *app.RequestContex
 		return
 	}
 	response.OK(c, &dto.SlideUploadDTO{
+		ID:           slug,
 		Entry:        entry,
 		ObjectPrefix: prefix,
 		FileCount:    count,
@@ -212,9 +222,14 @@ func (s *SlideService) UploadSlideCover(ctx context.Context, c *app.RequestConte
 	if _, ok := s.requireSuperAdmin(ctx, c); !ok {
 		return
 	}
-	slug := strings.TrimSpace(string(c.FormValue("id")))
-	if err := validateSlideSlug(slug); err != nil {
-		response.Error(c, 2001, err.Error())
+	currentID := parseOptionalSlideDatabaseID(string(c.FormValue("databaseId")))
+	slug, duplicate, err := s.prepareSlideSlug(string(c.FormValue("id")), currentID, true)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if duplicate {
+		response.Error(c, 5002, "幻灯片 id 已存在")
 		return
 	}
 	fileHeader, err := c.FormFile("file")
@@ -243,6 +258,7 @@ func (s *SlideService) UploadSlideCover(ctx context.Context, c *app.RequestConte
 		return
 	}
 	response.OK(c, &dto.SlideUploadDTO{
+		ID:              slug,
 		Cover:           "/api/slides/" + slug + "/cover",
 		CoverObjectPath: objectPath,
 	}, "ok")
@@ -341,8 +357,10 @@ func validateSlideReq(req *dto.SaveSlideReq) error {
 	req.Cover = strings.TrimSpace(req.Cover)
 	req.Entry = strings.TrimSpace(req.Entry)
 	req.ObjectPrefix = strings.TrimSpace(req.ObjectPrefix)
-	if err := validateSlideSlug(req.Slug); err != nil {
-		return err
+	if req.Slug != "" {
+		if err := validateSlideSlug(req.Slug); err != nil {
+			return err
+		}
 	}
 	if req.Title == "" {
 		return fmt.Errorf("标题不能为空")
@@ -474,9 +492,58 @@ func validateSlideSlug(slug string) error {
 	return nil
 }
 
+func (s *SlideService) prepareSlideSlug(slug string, currentID uint, generateIfBlank bool) (string, bool, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		if !generateIfBlank {
+			return "", false, nil
+		}
+		generated, err := s.generateUniqueSlideSlug()
+		return generated, false, err
+	}
+	if err := validateSlideSlug(slug); err != nil {
+		return "", false, err
+	}
+	exists, err := s.Repo.FindSlideBySlug(slug)
+	if err != nil {
+		return "", false, err
+	}
+	if exists.ID != 0 && exists.ID != currentID {
+		return "", true, nil
+	}
+	return slug, false, nil
+}
+
+func (s *SlideService) generateUniqueSlideSlug() (string, error) {
+	for i := 0; i < 20; i++ {
+		suffix := strings.ToLower(strconv.FormatInt(time.Now().UnixNano()+int64(i), 36))
+		slug := "slide-" + suffix
+		exists, err := s.Repo.FindSlideBySlug(slug)
+		if err != nil {
+			return "", err
+		}
+		if exists.ID == 0 {
+			return slug, nil
+		}
+	}
+	return "", fmt.Errorf("自动生成幻灯片 id 失败，请手动填写")
+}
+
 func parseSlideID(id string) (uint, error) {
 	value, err := strconv.ParseUint(id, 10, 64)
 	return uint(value), err
+}
+
+func parseOptionalSlideDatabaseID(id string) uint {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return 0
+	}
+	value, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uint(value)
 }
 
 type zipSlideEntry struct {

@@ -38,6 +38,7 @@ type SlideDTO struct {
 }
 
 type SlideUploadDTO struct {
+	ID              string `json:"id,omitempty"`
 	Entry           string `json:"entry,omitempty"`
 	ObjectPrefix    string `json:"objectPrefix,omitempty"`
 	Cover           string `json:"cover,omitempty"`
