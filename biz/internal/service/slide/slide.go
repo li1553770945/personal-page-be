@@ -448,7 +448,12 @@ func (s *SlideService) ServeSlideAsset(ctx context.Context, c *app.RequestContex
 		c.Data(consts.StatusNotFound, "text/plain; charset=utf-8", []byte("slide assets not uploaded"))
 		return
 	}
-	s.serveCOSObject(ctx, c, prefix+"/"+assetPath)
+	objectPath := prefix + "/" + assetPath
+	if assetPath == "index.html" {
+		s.serveCOSObject(ctx, c, objectPath)
+		return
+	}
+	s.redirectCOSObject(ctx, c, objectPath)
 }
 
 func (s *SlideService) ServeSlideCover(ctx context.Context, c *app.RequestContext) {
@@ -461,7 +466,7 @@ func (s *SlideService) ServeSlideCover(ctx context.Context, c *app.RequestContex
 		c.Data(consts.StatusNotFound, "text/plain; charset=utf-8", []byte("cover not uploaded"))
 		return
 	}
-	s.serveCOSObject(ctx, c, entity.CoverObjectPath)
+	s.redirectCOSObject(ctx, c, entity.CoverObjectPath)
 }
 
 func (s *SlideService) requireSuperAdmin(ctx context.Context, c *app.RequestContext) (*domain.UserEntity, bool) {
@@ -905,6 +910,16 @@ func (s *SlideService) putCOSObject(ctx context.Context, objectPath string, data
 		_ = resp.Body.Close()
 	}
 	return err
+}
+
+func (s *SlideService) redirectCOSObject(ctx context.Context, c *app.RequestContext, objectPath string) {
+	signedURL, err := s.signCOSObjectURL(ctx, http.MethodGet, objectPath)
+	if err != nil {
+		c.Data(consts.StatusInternalServerError, "text/plain; charset=utf-8", []byte(err.Error()))
+		return
+	}
+	c.Redirect(consts.StatusFound, []byte(signedURL))
+	c.Response.Header.Set("Cache-Control", "private, max-age=300")
 }
 
 func (s *SlideService) serveCOSObject(ctx context.Context, c *app.RequestContext, objectPath string) {
