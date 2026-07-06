@@ -33,6 +33,8 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.POST("/slides", append(middlewire.UserMiddleware(), App.SlideService.CreateSlide)...)
 	adminApi.PUT("/slides/:id", append(middlewire.UserMiddleware(), App.SlideService.UpdateSlide)...)
 	adminApi.DELETE("/slides/:id", append(middlewire.UserMiddleware(), App.SlideService.DeleteSlide)...)
+	adminApi.POST("/slides/upload-deck", append(middlewire.UserMiddleware(), App.SlideService.UploadSlideDeck)...)
+	adminApi.POST("/slides/upload-cover", append(middlewire.UserMiddleware(), App.SlideService.UploadSlideCover)...)
 
 	fileApi := api.Group("/files")
 
@@ -68,6 +70,8 @@ func customizedRegister(r *server.Hertz) {
 
 	slidesApi := api.Group("/slides")
 	slidesApi.GET("", App.SlideService.ListPublicSlides)
+	slidesApi.GET("/:slug/assets/*path", App.SlideService.ServeSlideAsset)
+	slidesApi.GET("/:slug/cover", App.SlideService.ServeSlideCover)
 	slidesApi.POST("/:slug/unlock", App.SlideService.UnlockSlide)
 
 	api.POST("/aichat", App.AIChatService.SendMessage)

@@ -36,7 +36,7 @@ func GetContainer(path string) *Container {
 	cacheCache := cache.NewCache()
 	iChatService := chat.NewChatService(cacheCache, logger)
 	iProjectService := project.NewProjectService(iRepository, iGlobalService, logger)
-	iSlideService := slide.NewSlideService(iRepository)
+	iSlideService := slide.NewSlideService(iRepository, configConfig)
 	iAIChatService := aichat.NewAIChatService(configConfig, logger)
 	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService, iProjectService, iSlideService, iAIChatService)
 	return container
