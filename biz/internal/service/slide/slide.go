@@ -36,6 +36,7 @@ import (
 
 var slideSlugPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 var slideDeckBasePattern = regexp.MustCompile(`/slides/decks/[^/"'()\s]+/?`)
+var legacySlideGuardPattern = regexp.MustCompile(`(?s)<script>\s*\(function\s*\(\)\s*\{.*?protected-slide:.*?/slides/protected/.*?\}\)\(\);\s*</script>\s*`)
 
 const slideAccessMaxAgeSeconds = 3600
 
@@ -866,7 +867,8 @@ func shouldRewriteSlideAssetRefs(name string) bool {
 }
 
 func rewriteSlideAssetRefs(content []byte, slug string) []byte {
-	return []byte(slideDeckBasePattern.ReplaceAllString(string(content), "/api/slides/"+slug+"/assets/"))
+	text := legacySlideGuardPattern.ReplaceAllString(string(content), "")
+	return []byte(slideDeckBasePattern.ReplaceAllString(text, "/api/slides/"+slug+"/assets/"))
 }
 
 func contentTypeForPath(name string, content []byte) string {
