@@ -16,6 +16,7 @@ import (
 	"personal-page-be/biz/internal/service/global_service"
 	"personal-page-be/biz/internal/service/message"
 	"personal-page-be/biz/internal/service/project"
+	"personal-page-be/biz/internal/service/slide"
 	"personal-page-be/biz/internal/service/user"
 )
 
@@ -38,6 +39,7 @@ func GetContainer(path string) *Container {
 		message.NewMessageService,
 		chat.NewChatService,
 		project.NewProjectService,
+		slide.NewSlideService,
 		aichat.NewAIChatService,
 
 		NewContainer,

@@ -22,6 +22,12 @@ type IRepository interface {
 	RemoveFile(fileID uint) error
 	RemoveFileByKey(fileKey string) error
 
+	ListSlides() (*[]domain.SlideEntity, error)
+	FindSlideByID(slideID uint) (*domain.SlideEntity, error)
+	FindSlideBySlug(slug string) (*domain.SlideEntity, error)
+	SaveSlide(slide *domain.SlideEntity) error
+	RemoveSlide(slideID uint) error
+
 	FindAllMessageCategory() (*[]domain.MessageCategoryEntity, error)
 	SaveMessage(entity *domain.MessageEntity) error
 	FindMessageByUUID(uuid string) (*domain.MessageEntity, error)
@@ -55,6 +61,9 @@ func NewRepository(db *gorm.DB) IRepository {
 	}
 	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
 		panic("migrate file model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.SlideEntity{}); err != nil {
+		panic("migrate slide model failed: " + err.Error())
 	}
 	if err := db.AutoMigrate(&domain.MessageCategoryEntity{}); err != nil {
 		panic("migrate message category model failed: " + err.Error())
