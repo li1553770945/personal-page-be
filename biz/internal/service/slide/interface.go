@@ -22,6 +22,8 @@ type ISlideService interface {
 	UnlockSlide(ctx context.Context, c *app.RequestContext)
 	UploadSlideDeck(ctx context.Context, c *app.RequestContext)
 	UploadSlideCover(ctx context.Context, c *app.RequestContext)
+	SignSlideDeckUpload(ctx context.Context, c *app.RequestContext)
+	SignSlideCoverUpload(ctx context.Context, c *app.RequestContext)
 	ServeSlideAsset(ctx context.Context, c *app.RequestContext)
 	ServeSlideCover(ctx context.Context, c *app.RequestContext)
 }

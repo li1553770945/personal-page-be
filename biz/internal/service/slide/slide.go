@@ -267,6 +267,131 @@ func (s *SlideService) UploadSlideCover(ctx context.Context, c *app.RequestConte
 	}, "ok")
 }
 
+func (s *SlideService) SignSlideDeckUpload(ctx context.Context, c *app.RequestContext) {
+	if _, ok := s.requireSuperAdmin(ctx, c); !ok {
+		return
+	}
+	var req dto.SignSlideDeckUploadReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 2001, "参数错误: "+err.Error())
+		return
+	}
+	if len(req.Files) == 0 {
+		response.Error(c, 2001, "missing slide files")
+		return
+	}
+	if len(req.Files) > 2000 {
+		response.Error(c, 2001, "too many slide files")
+		return
+	}
+	slug, duplicate, err := s.prepareSlideSlug(req.Slug, req.DatabaseID, true)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if duplicate {
+		response.Error(c, 5002, "幻灯片 id 已存在")
+		return
+	}
+
+	type cleanFile struct {
+		path        string
+		contentType string
+	}
+	files := make([]cleanFile, 0, len(req.Files))
+	seen := map[string]bool{}
+	hasIndex := false
+	for _, file := range req.Files {
+		cleaned, ok := cleanZipPath(file.Path)
+		if !ok || ignoredSlideZipPath(cleaned) {
+			response.Error(c, 2001, "invalid slide file path: "+file.Path)
+			return
+		}
+		if seen[cleaned] {
+			response.Error(c, 2001, "duplicate slide file path: "+cleaned)
+			return
+		}
+		seen[cleaned] = true
+		if cleaned == "index.html" {
+			hasIndex = true
+		}
+		contentType := strings.TrimSpace(file.ContentType)
+		if contentType == "" {
+			contentType = contentTypeForPath(cleaned, nil)
+		}
+		files = append(files, cleanFile{path: cleaned, contentType: contentType})
+	}
+	if !hasIndex {
+		response.Error(c, 2001, "zip root must contain index.html")
+		return
+	}
+
+	prefix := "slides/" + slug + "/"
+	uploads := make([]dto.SlideSignedUploadDTO, 0, len(files))
+	for _, file := range files {
+		objectPath := prefix + file.path
+		signedURL, err := s.signCOSObjectURL(ctx, http.MethodPut, objectPath)
+		if err != nil {
+			response.Error(c, 5001, "生成上传 URL 失败: "+err.Error())
+			return
+		}
+		uploads = append(uploads, dto.SlideSignedUploadDTO{
+			Path:        file.path,
+			ObjectPath:  objectPath,
+			SignedURL:   signedURL,
+			ContentType: file.contentType,
+		})
+	}
+	response.OK(c, &dto.SlideDeckUploadSignDTO{
+		ID:           slug,
+		Entry:        "/api/slides/" + slug + "/assets/",
+		ObjectPrefix: prefix,
+		FileCount:    len(uploads),
+		Uploads:      uploads,
+	}, "ok")
+}
+
+func (s *SlideService) SignSlideCoverUpload(ctx context.Context, c *app.RequestContext) {
+	if _, ok := s.requireSuperAdmin(ctx, c); !ok {
+		return
+	}
+	var req dto.SignSlideCoverUploadReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 2001, "参数错误: "+err.Error())
+		return
+	}
+	slug, duplicate, err := s.prepareSlideSlug(req.Slug, req.DatabaseID, true)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if duplicate {
+		response.Error(c, 5002, "幻灯片 id 已存在")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(req.FileName))
+	if ext == "" {
+		ext = ".png"
+	}
+	objectPath := fmt.Sprintf("slides/%s/cover%s", slug, ext)
+	contentType := strings.TrimSpace(req.ContentType)
+	if contentType == "" {
+		contentType = contentTypeForPath(objectPath, nil)
+	}
+	signedURL, err := s.signCOSObjectURL(ctx, http.MethodPut, objectPath)
+	if err != nil {
+		response.Error(c, 5001, "生成上传 URL 失败: "+err.Error())
+		return
+	}
+	response.OK(c, &dto.SlideCoverUploadSignDTO{
+		ID:              slug,
+		Cover:           "/api/slides/" + slug + "/cover",
+		CoverObjectPath: objectPath,
+		SignedURL:       signedURL,
+		ContentType:     contentType,
+	}, "ok")
+}
+
 func (s *SlideService) UnlockSlide(ctx context.Context, c *app.RequestContext) {
 	slug := strings.TrimSpace(c.Param("slug"))
 	if slug == "" {
@@ -747,6 +872,22 @@ func contentTypeForPath(name string, content []byte) string {
 		return http.DetectContentType(content)
 	}
 	return "application/octet-stream"
+}
+
+func (s *SlideService) signCOSObjectURL(ctx context.Context, method, objectPath string) (string, error) {
+	client, err := s.cosClient()
+	if err != nil {
+		return "", err
+	}
+	opt := &cos.PresignedURLOptions{
+		Query:  &url.Values{},
+		Header: &http.Header{},
+	}
+	signedURL, err := client.Object.GetPresignedURL(ctx, method, objectPath, s.Config.EffectiveCOSAk(), s.Config.EffectiveCOSSk(), time.Hour, opt)
+	if err != nil {
+		return "", err
+	}
+	return signedURL.String(), nil
 }
 
 func (s *SlideService) putCOSObject(ctx context.Context, objectPath string, data []byte, contentType string) error {

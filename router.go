@@ -35,6 +35,8 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.DELETE("/slides/:id", append(middlewire.UserMiddleware(), App.SlideService.DeleteSlide)...)
 	adminApi.POST("/slides/upload-deck", append(middlewire.UserMiddleware(), App.SlideService.UploadSlideDeck)...)
 	adminApi.POST("/slides/upload-cover", append(middlewire.UserMiddleware(), App.SlideService.UploadSlideCover)...)
+	adminApi.POST("/slides/sign-deck-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideDeckUpload)...)
+	adminApi.POST("/slides/sign-cover-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideCoverUpload)...)
 
 	fileApi := api.Group("/files")
 

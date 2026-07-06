@@ -46,3 +46,44 @@ type SlideUploadDTO struct {
 	CoverObjectPath string `json:"coverObjectPath,omitempty"`
 	FileCount       int    `json:"fileCount,omitempty"`
 }
+
+type SlideUploadFileReq struct {
+	Path        string `json:"path"`
+	ContentType string `json:"contentType"`
+}
+
+type SignSlideDeckUploadReq struct {
+	Slug       string               `json:"id"`
+	DatabaseID uint                 `json:"databaseId"`
+	Files      []SlideUploadFileReq `json:"files"`
+}
+
+type SlideSignedUploadDTO struct {
+	Path        string `json:"path"`
+	ObjectPath  string `json:"objectPath"`
+	SignedURL   string `json:"signedUrl"`
+	ContentType string `json:"contentType,omitempty"`
+}
+
+type SlideDeckUploadSignDTO struct {
+	ID           string                 `json:"id"`
+	Entry        string                 `json:"entry"`
+	ObjectPrefix string                 `json:"objectPrefix"`
+	FileCount    int                    `json:"fileCount"`
+	Uploads      []SlideSignedUploadDTO `json:"uploads"`
+}
+
+type SignSlideCoverUploadReq struct {
+	Slug        string `json:"id"`
+	DatabaseID  uint   `json:"databaseId"`
+	FileName    string `json:"fileName"`
+	ContentType string `json:"contentType"`
+}
+
+type SlideCoverUploadSignDTO struct {
+	ID              string `json:"id"`
+	Cover           string `json:"cover"`
+	CoverObjectPath string `json:"coverObjectPath"`
+	SignedURL       string `json:"signedUrl"`
+	ContentType     string `json:"contentType,omitempty"`
+}
