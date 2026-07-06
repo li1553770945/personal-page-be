@@ -450,7 +450,7 @@ func (s *SlideService) ServeSlideAsset(ctx context.Context, c *app.RequestContex
 		return
 	}
 	objectPath := prefix + "/" + assetPath
-	if assetPath == "index.html" {
+	if entity.Protected || assetPath == "index.html" {
 		s.serveCOSObject(ctx, c, objectPath)
 		return
 	}
