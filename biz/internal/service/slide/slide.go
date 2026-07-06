@@ -35,7 +35,7 @@ import (
 )
 
 var slideSlugPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
-var slideDeckBasePattern = regexp.MustCompile(`/slides/decks/[^"'()\s]+/`)
+var slideDeckBasePattern = regexp.MustCompile(`/slides/decks/[^/"'()\s]+/?`)
 
 const slideAccessMaxAgeSeconds = 3600
 
@@ -515,7 +515,7 @@ func (s *SlideService) applySlideReq(entity *domain.SlideEntity, req *dto.SaveSl
 	entity.Protected = req.Protected
 
 	if entity.Entry == "" {
-		entity.Entry = "/slides/decks/" + entity.Slug + "/"
+		entity.Entry = "/api/slides/" + entity.Slug + "/assets/"
 	}
 
 	password := strings.TrimSpace(req.Password)
