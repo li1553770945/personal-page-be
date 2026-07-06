@@ -37,6 +37,7 @@ import (
 var slideSlugPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 var slideDeckBasePattern = regexp.MustCompile(`/slides/decks/[^/"'()\s]+/?`)
 var legacySlideGuardPattern = regexp.MustCompile(`(?s)<script>\s*\(function\s*\(\)\s*\{.*?protected-slide:.*?/slides/protected/.*?\}\)\(\);\s*</script>\s*`)
+var slideCrossoriginAttrPattern = regexp.MustCompile(`\s+crossorigin(?:=(?:"[^"]*"|'[^']*'|[^\s>]*))?`)
 
 const slideAccessMaxAgeSeconds = 3600
 
@@ -423,7 +424,9 @@ func (s *SlideService) UnlockSlide(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.SetCookie(slideAccessCookieName(slug), s.issueSlideAccessToken(slug), slideAccessMaxAgeSeconds, "/", "", protocol.CookieSameSiteLaxMode, true, true)
-	response.OK(c, s.slideEntityToDTO(entity, false), "ok")
+	item := s.slideEntityToDTO(entity, false)
+	item.Entry = slideEntryWithVersion(item.Entry, entity.UpdatedAt.Unix())
+	response.OK(c, item, "ok")
 }
 
 func (s *SlideService) ServeSlideAsset(ctx context.Context, c *app.RequestContext) {
@@ -450,8 +453,12 @@ func (s *SlideService) ServeSlideAsset(ctx context.Context, c *app.RequestContex
 		return
 	}
 	objectPath := prefix + "/" + assetPath
-	if entity.Protected || assetPath == "index.html" {
-		s.serveCOSObject(ctx, c, objectPath)
+	if entity.Protected {
+		s.serveCOSObject(ctx, c, objectPath, "private, no-store", true, slideAssetTransformer(assetPath, slug))
+		return
+	}
+	if assetPath == "index.html" {
+		s.serveCOSObject(ctx, c, objectPath, "public, max-age=300", false, slideAssetTransformer(assetPath, slug))
 		return
 	}
 	s.redirectCOSObject(ctx, c, objectPath)
@@ -775,7 +782,7 @@ func (s *SlideService) uploadSlideZip(ctx context.Context, slug string, data []b
 			return "", "", 0, err
 		}
 		if shouldRewriteSlideAssetRefs(entry.path) {
-			content = rewriteSlideAssetRefs(content, slug)
+			content = rewriteSlideAssetRefs(content, slug, entry.path)
 		}
 		objectPath := prefix + entry.path
 		if err = s.putCOSObject(ctx, objectPath, content, contentTypeForPath(entry.path, content)); err != nil {
@@ -866,9 +873,38 @@ func shouldRewriteSlideAssetRefs(name string) bool {
 	}
 }
 
-func rewriteSlideAssetRefs(content []byte, slug string) []byte {
-	text := legacySlideGuardPattern.ReplaceAllString(string(content), "")
+func rewriteSlideAssetRefs(content []byte, slug string, name string) []byte {
+	text := string(content)
+	if strings.EqualFold(filepath.Ext(name), ".html") {
+		text = sanitizeSlideHTML(text)
+	}
 	return []byte(slideDeckBasePattern.ReplaceAllString(text, "/api/slides/"+slug+"/assets/"))
+}
+
+func sanitizeSlideHTML(content string) string {
+	content = legacySlideGuardPattern.ReplaceAllString(content, "")
+	return slideCrossoriginAttrPattern.ReplaceAllString(content, "")
+}
+
+func slideAssetTransformer(assetPath string, slug string) func([]byte) []byte {
+	if !shouldRewriteSlideAssetRefs(assetPath) {
+		return nil
+	}
+	return func(content []byte) []byte {
+		return rewriteSlideAssetRefs(content, slug, assetPath)
+	}
+}
+
+func slideEntryWithVersion(entry string, version int64) string {
+	entry = strings.TrimSpace(entry)
+	if entry == "" {
+		return entry
+	}
+	separator := "?"
+	if strings.Contains(entry, "?") {
+		separator = "&"
+	}
+	return entry + separator + "v=" + strconv.FormatInt(version, 10)
 }
 
 func contentTypeForPath(name string, content []byte) string {
@@ -924,7 +960,7 @@ func (s *SlideService) redirectCOSObject(ctx context.Context, c *app.RequestCont
 	c.Response.Header.Set("Cache-Control", "private, max-age=300")
 }
 
-func (s *SlideService) serveCOSObject(ctx context.Context, c *app.RequestContext, objectPath string) {
+func (s *SlideService) serveCOSObject(ctx context.Context, c *app.RequestContext, objectPath string, cacheControl string, varyCookie bool, transform func([]byte) []byte) {
 	client, err := s.cosClient()
 	if err != nil {
 		c.Data(consts.StatusInternalServerError, "text/plain; charset=utf-8", []byte(err.Error()))
@@ -941,11 +977,20 @@ func (s *SlideService) serveCOSObject(ctx context.Context, c *app.RequestContext
 		c.Data(consts.StatusInternalServerError, "text/plain; charset=utf-8", []byte(err.Error()))
 		return
 	}
+	if transform != nil {
+		data = transform(data)
+	}
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = contentTypeForPath(objectPath, data)
 	}
-	c.Response.Header.Set("Cache-Control", "public, max-age=300")
+	if cacheControl == "" {
+		cacheControl = "public, max-age=300"
+	}
+	c.Response.Header.Set("Cache-Control", cacheControl)
+	if varyCookie {
+		c.Response.Header.Set("Vary", "Cookie")
+	}
 	c.Data(consts.StatusOK, contentType, data)
 }
 

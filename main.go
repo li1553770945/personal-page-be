@@ -48,7 +48,7 @@ func main() {
 	store := cookie.NewStore([]byte("secret"))
 	h.Use(sessions.New("user", store))
 	h.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "https://peacesheep.xyz", "https://www.peacesheep.xyz"},
+		AllowOrigins:     []string{"http://localhost:5173", "https://peacesheep.xyz", "https://www.peacesheep.xyz", "https://api.peacesheep.xyz"},
 		AllowCredentials: true,
 		AllowWebSockets:  true,
 	}))
