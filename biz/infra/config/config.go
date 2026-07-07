@@ -1,7 +1,9 @@
 package config
 
 import (
+	"net/url"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -128,6 +130,33 @@ func (c *Config) EffectiveAIChatURL() string {
 		return c.AIChatConfig.URL
 	}
 	return "https://api.dify.ai/v1/chat-messages"
+}
+
+func (c *Config) EffectiveAIChatModel() string {
+	if v := os.Getenv("DIFY_MODEL"); v != "" {
+		return v
+	}
+	if v := os.Getenv("AICHAT_MODEL"); v != "" {
+		return v
+	}
+	if c.AIChatConfig.Model != "" {
+		return c.AIChatConfig.Model
+	}
+	return "unknown-model"
+}
+
+func (c *Config) EffectiveAIChatChannel() string {
+	if v := os.Getenv("DIFY_CHANNEL"); v != "" {
+		return v
+	}
+	if v := os.Getenv("AICHAT_CHANNEL"); v != "" {
+		return v
+	}
+	endpoint := c.EffectiveAIChatURL()
+	if parsed, err := url.Parse(endpoint); err == nil && parsed.Hostname() != "" {
+		return strings.ToLower(parsed.Hostname())
+	}
+	return "dify"
 }
 
 func (c *Config) EffectiveSuperAdminUsername() string {

@@ -1,6 +1,8 @@
 package repo
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 	"personal-page-be/biz/internal/domain"
 )
@@ -12,12 +14,17 @@ type IRepository interface {
 	ListUsers() (*[]domain.UserEntity, error)
 	CountUsersByRole(role string, canUseOnly bool) (int64, error)
 	SaveUser(user *domain.UserEntity) error
+	SaveUserAndAudit(user *domain.UserEntity, audit *domain.AdminAuditLogEntity) error
+	RemoveUserAndAudit(userID uint, audit *domain.AdminAuditLogEntity) error
+	SaveAIUsage(usage *domain.AIUsageEntity) error
+	ListAIUsage(userID *uint, startAt *time.Time, endAt *time.Time, model string, channel string) (*[]domain.AIUsageEntity, error)
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
 	FindFileByKey(fileKey string) (*domain.FileEntity, error)
 	FindFileBySaveName(saveName string) (*domain.FileEntity, error)
 	ListFiles(userID *uint) (*[]domain.FileEntity, error)
+	CountFilesByUserID(userID uint) (int64, error)
 	SaveFile(user *domain.FileEntity) error
 	RemoveFile(fileID uint) error
 	RemoveFileByKey(fileKey string) error
@@ -58,6 +65,12 @@ type Repository struct {
 func NewRepository(db *gorm.DB) IRepository {
 	if err := db.AutoMigrate(&domain.UserEntity{}); err != nil {
 		panic("migrate user model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.AdminAuditLogEntity{}); err != nil {
+		panic("migrate admin audit log model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.AIUsageEntity{}); err != nil {
+		panic("migrate ai usage model failed: " + err.Error())
 	}
 	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
 		panic("migrate file model failed: " + err.Error())

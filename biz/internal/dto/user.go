@@ -40,3 +40,15 @@ type UpdateUserRoleReq struct {
 type UpdateUserStatusReq struct {
 	CanUse bool `json:"can_use"`
 }
+
+type UserDangerActionReq struct {
+	Username string `json:"username"`
+	Reason   string `json:"reason"`
+}
+
+type UserDangerActionResp struct {
+	User         *AdminUserDTO `json:"user,omitempty"`
+	ActivateCode string        `json:"activate_code,omitempty"`
+	ActiveCode   string        `json:"activeCode,omitempty"`
+	RelatedFiles int64         `json:"related_files"`
+}

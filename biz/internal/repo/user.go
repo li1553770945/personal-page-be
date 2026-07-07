@@ -2,6 +2,8 @@ package repo
 
 import (
 	"personal-page-be/biz/internal/domain"
+
+	"gorm.io/gorm"
 )
 
 func (Repo *Repository) FindUser(username string) (*domain.UserEntity, error) {
@@ -58,4 +60,34 @@ func (Repo *Repository) SaveUser(user *domain.UserEntity) error {
 		err := Repo.DB.Save(&user).Error
 		return err
 	}
+}
+
+func (Repo *Repository) SaveUserAndAudit(user *domain.UserEntity, audit *domain.AdminAuditLogEntity) error {
+	return Repo.DB.Transaction(func(tx *gorm.DB) error {
+		if user.ID == 0 {
+			if err := tx.Create(&user).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Save(&user).Error; err != nil {
+				return err
+			}
+		}
+		if audit != nil {
+			return tx.Create(audit).Error
+		}
+		return nil
+	})
+}
+
+func (Repo *Repository) RemoveUserAndAudit(userID uint, audit *domain.AdminAuditLogEntity) error {
+	return Repo.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Delete(&domain.UserEntity{}, userID).Error; err != nil {
+			return err
+		}
+		if audit != nil {
+			return tx.Create(audit).Error
+		}
+		return nil
+	})
 }

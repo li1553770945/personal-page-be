@@ -73,3 +73,9 @@ func (Repo *Repository) ListFiles(userID *uint) (*[]domain.FileEntity, error) {
 	}
 	return &files, nil
 }
+
+func (Repo *Repository) CountFilesByUserID(userID uint) (int64, error) {
+	var count int64
+	err := Repo.DB.Model(&domain.FileEntity{}).Where("user_id = ?", userID).Count(&count).Error
+	return count, err
+}

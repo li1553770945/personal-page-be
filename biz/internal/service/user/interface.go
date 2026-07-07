@@ -22,6 +22,9 @@ type IUserService interface {
 	ListUsers(ctx context.Context, c *app.RequestContext)
 	UpdateUserRole(ctx context.Context, c *app.RequestContext)
 	UpdateUserStatus(ctx context.Context, c *app.RequestContext)
+	RegenerateActivateCode(ctx context.Context, c *app.RequestContext)
+	ResetTestUser(ctx context.Context, c *app.RequestContext)
+	DeleteTestUser(ctx context.Context, c *app.RequestContext)
 }
 
 func NewUserService(repo repo.IRepository, config *config.Config) IUserService {

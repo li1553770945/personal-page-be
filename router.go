@@ -28,6 +28,9 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.GET("/users", append(middlewire.UserMiddleware(), App.UserService.ListUsers)...)
 	adminApi.POST("/users/:id/role", append(middlewire.UserMiddleware(), App.UserService.UpdateUserRole)...)
 	adminApi.POST("/users/:id/status", append(middlewire.UserMiddleware(), App.UserService.UpdateUserStatus)...)
+	adminApi.POST("/users/:id/activation-code", append(middlewire.UserMiddleware(), App.UserService.RegenerateActivateCode)...)
+	adminApi.POST("/users/:id/reset-test", append(middlewire.UserMiddleware(), App.UserService.ResetTestUser)...)
+	adminApi.DELETE("/users/:id", append(middlewire.UserMiddleware(), App.UserService.DeleteTestUser)...)
 	adminApi.GET("/files", append(middlewire.UserMiddleware(), App.FileService.ListAllFiles)...)
 	adminApi.GET("/slides", append(middlewire.UserMiddleware(), App.SlideService.ListAdminSlides)...)
 	adminApi.POST("/slides", append(middlewire.UserMiddleware(), App.SlideService.CreateSlide)...)
@@ -37,6 +40,7 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.POST("/slides/upload-cover", append(middlewire.UserMiddleware(), App.SlideService.UploadSlideCover)...)
 	adminApi.POST("/slides/sign-deck-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideDeckUpload)...)
 	adminApi.POST("/slides/sign-cover-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideCoverUpload)...)
+	adminApi.GET("/aichat/stats", append(middlewire.UserMiddleware(), App.AIChatService.GetAdminUsageStats)...)
 
 	fileApi := api.Group("/files")
 
@@ -77,6 +81,7 @@ func customizedRegister(r *server.Hertz) {
 	slidesApi.POST("/:slug/unlock", App.SlideService.UnlockSlide)
 
 	api.POST("/aichat", App.AIChatService.SendMessage)
+	api.GET("/aichat/stats", append(middlewire.UserMiddleware(), App.AIChatService.GetMyUsageStats)...)
 
 	socket := r.Group("/socket")
 	{
