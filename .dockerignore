@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.env
+.env.*
+conf
+files
+memory
+output
+*.log
+*.tmp
+*.exe
+personal-page-be
+main

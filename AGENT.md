@@ -29,9 +29,13 @@
 ## 发布规则
 
 - 用户明确要求发布时，要完成测试、提交、推送、镜像构建、Kubernetes rollout、日志观察和真实 API smoke。
-- 生产镜像优先使用不可变 Git SHA 标签，不使用无法精确回滚的 `latest` 作为最终部署版本。
+- 标准发布入口是仓库根目录的 `.\scripts\deploy-backend.ps1`；发布从本机完成，不使用 GitHub Actions 或 Keel。
+- 生产镜像使用 `ccr.ccs.tencentyun.com/littlehorse/personal-page-be:<完整 Git SHA>@<digest>`，不得使用或覆盖 `latest`、`master` 等可变标签。
+- 发布脚本必须要求干净的 `master`、确认 Git 远端状态、完成测试后再推送镜像，并显式修改 Deployment 镜像；只有用户传入 `-PushSource` 才允许脚本推送源码。
 - 当前生产后端部署名为 `personal-page-be-deployment`，运行在 `ubuntu@124.223.181.152` 的单节点 Kubernetes 上。
-- 若服务器无法从镜像仓库拉取，应构建精确版本并导入 containerd，随后核对两个 Pod 的 imageID。
+- 私有 CCR 拉取凭据使用同 namespace 的 `ccr-tencent` Secret；日常发布只验证、不改写 Secret。仅首次初始化或凭据轮换可显式使用 `-BootstrapPullSecret` 从本机 Docker credential store 同步，且不得进入仓库、参数日志或 memory。
+- 回退应显式切回上一完整镜像引用，不能依赖可变标签或无条件 `rollout undo`；自动回退前必须确认线上仍是本次失败镜像，避免覆盖并发发布。
+- 若 CCR 临时不可用，应保留构建精确版本并导入 containerd 的后备路径，随后核对两个 Pod 的 imageID。
 - 涉及可信代理时，必须先确保 Service 源 IP 策略和 nginx 覆写头配置正确，再开启后端信任开关。
 - 发布完成不等于任务完成；还要验证公网 `/api/ping`、关键错误码、SSE 成功及断连取消。
 
