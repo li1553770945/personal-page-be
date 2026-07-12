@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-push:
@@ -11,10 +15,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Validate Docker Hub token
+        env:
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+        run: |
+          if [ -z "${DOCKER_TOKEN}" ]; then
+            echo "::error::Missing repository secret DOCKER_TOKEN. Add a Docker Hub access token in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: peacesheep
           password: ${{ secrets.DOCKER_TOKEN }}
