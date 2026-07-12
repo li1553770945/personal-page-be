@@ -21,8 +21,12 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t peacesheep/personal-page-be:latest .
+          docker build \
+            -t peacesheep/personal-page-be:latest \
+            -t peacesheep/personal-page-be:${GITHUB_SHA} \
+            .
 
       - name: Push Docker image
         run: |
           docker push peacesheep/personal-page-be:latest
+          docker push peacesheep/personal-page-be:${GITHUB_SHA}

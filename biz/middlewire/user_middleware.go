@@ -11,12 +11,14 @@ import (
 	"github.com/hertz-contrib/sessions"
 )
 
-var jwtSecret = "secret"
+var jwtSecret string
 
 func InitAuth(secret string) {
-	if secret != "" {
-		jwtSecret = secret
+	secret = strings.TrimSpace(secret)
+	if len([]byte(secret)) < 32 || strings.EqualFold(secret, "secret") {
+		panic("JWT key is not securely configured")
 	}
+	jwtSecret = secret
 }
 
 func UserMiddleware() []app.HandlerFunc {
@@ -47,17 +49,17 @@ func UserMiddleware() []app.HandlerFunc {
 
 func userFromBearer(c *app.RequestContext) (string, uint, bool) {
 	header := string(c.GetHeader("Authorization"))
-	if header == "" {
+	if !strings.HasPrefix(header, "Bearer ") {
 		return "", 0, false
 	}
-	tokenText := strings.TrimSpace(strings.TrimPrefix(header, "Bearer"))
-	if tokenText == "" || tokenText == header {
+	tokenText := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+	if tokenText == "" {
 		return "", 0, false
 	}
 
 	claims := jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(tokenText, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if token.Method != jwt.SigningMethodHS256 || jwtSecret == "" {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(jwtSecret), nil

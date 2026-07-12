@@ -2,17 +2,23 @@ package global_service
 
 import (
 	"fmt"
-	"github.com/robfig/cron/v3"
 	"os"
-	"personal-page-be/biz/internal/constant"
 	"time"
+
+	"github.com/robfig/cron/v3"
+	"personal-page-be/biz/internal/constant"
 )
 
 func (s *GlobalService) DeleteFile() {
 	root := constant.FileBasePath
+	if err := os.MkdirAll(root, 0o750); err != nil {
+		s.Logger.WithError(err).Error("创建文件目录失败")
+		return
+	}
 	files, err := os.ReadDir(root)
 	if err != nil {
-		panic(err)
+		s.Logger.WithError(err).Error("读取文件目录失败")
+		return
 	}
 	for _, file := range files {
 		if file.IsDir() {
@@ -45,6 +51,9 @@ func (s *GlobalService) DeleteFile() {
 	}
 }
 func (s *GlobalService) StartCronDeleteFile() {
+	if err := os.MkdirAll(constant.FileBasePath, 0o750); err != nil {
+		s.Logger.WithError(err).Error("初始化文件目录失败")
+	}
 	crontab := cron.New(cron.WithSeconds()) //精确到秒
 	task := s.DeleteFile
 	spec := "0 5 5 1/1 * ? " //每天5:05

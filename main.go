@@ -5,27 +5,37 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/app/server"
-	"github.com/hertz-contrib/cors"
-	"github.com/hertz-contrib/obs-opentelemetry/provider"
-	hertztracing "github.com/hertz-contrib/obs-opentelemetry/tracing"
-	"github.com/hertz-contrib/sessions"
-	"github.com/hertz-contrib/sessions/cookie"
 	"os"
 	"personal-page-be/biz/container"
 	"personal-page-be/biz/middlewire"
 	"strings"
 	"time"
+
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
+	hertzconfig "github.com/cloudwego/hertz/pkg/common/config"
+	"github.com/hertz-contrib/cors"
+	"github.com/hertz-contrib/obs-opentelemetry/provider"
+	hertztracing "github.com/hertz-contrib/obs-opentelemetry/tracing"
+	"github.com/hertz-contrib/sessions"
+	"github.com/hertz-contrib/sessions/cookie"
 )
 
 var App *container.Container
 
-const maxRequestBodySize = 512 * 1024 * 1024
-
 func main() {
 	App = container.GetContainer("conf/config.yaml")
 	middlewire.InitAuth(App.Config.EffectiveJWTKey())
+	maxRequestBodySize, err := App.Config.EffectiveHTTPMaxRequestBodyBytes()
+	if err != nil {
+		panic("invalid HTTP request body limit: " + err.Error())
+	}
+	serverOptions := []hertzconfig.Option{
+		server.WithExitWaitTime(3 * time.Second),
+		server.WithHostPorts(App.Config.HttpConfig.Address),
+		server.WithMaxRequestBodySize(maxRequestBodySize),
+		server.WithSenseClientDisconnection(true),
+	}
 
 	var h *server.Hertz
 	if endpoint := otelEndpoint(); endpoint != "" {
@@ -39,16 +49,19 @@ func main() {
 		}()
 
 		tracer, cfg := hertztracing.NewServerTracer()
-		h = server.Default(tracer, server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(maxRequestBodySize))
+		h = server.Default(append([]hertzconfig.Option{tracer}, serverOptions...)...)
 		h.Use(skipPingTrace(hertztracing.ServerMiddleware(cfg)))
 	} else {
-		h = server.Default(server.WithExitWaitTime(3*time.Second), server.WithHostPorts(App.Config.HttpConfig.Address), server.WithMaxRequestBodySize(maxRequestBodySize))
+		h = server.Default(serverOptions...)
 	}
 
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(App.Config.EffectiveSessionKey()))
 	h.Use(sessions.New("user", store))
 	h.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "https://peacesheep.xyz", "https://www.peacesheep.xyz", "https://api.peacesheep.xyz"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "X-AI-Visitor-ID"},
+		ExposeHeaders:    []string{"Retry-After"},
 		AllowCredentials: true,
 		AllowWebSockets:  true,
 	}))

@@ -1,8 +1,13 @@
 package config
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -20,9 +25,10 @@ type DatabaseConfig struct {
 }
 
 type HttpConfig struct {
-	Address   string `yaml:"address"`
-	SecretKey string `yaml:"secret_key"`
-	JWTKey    string `yaml:"jwt_key"`
+	Address    string `yaml:"address"`
+	SecretKey  string `yaml:"secret_key"`
+	JWTKey     string `yaml:"jwt_key"`
+	SessionKey string `yaml:"session_key"`
 }
 
 type CosConfig struct {
@@ -32,10 +38,34 @@ type CosConfig struct {
 }
 
 type AIChatConfig struct {
-	Model  string `yaml:"model"`
-	APIKey string `yaml:"api-key"`
-	URL    string `yaml:"url"`
+	Model               string `yaml:"model"`
+	APIKey              string `yaml:"api-key"`
+	URL                 string `yaml:"url"`
+	MaxRequestBodyBytes int    `yaml:"max-request-body-bytes"`
+	MaxMessageRunes     int    `yaml:"max-message-runes"`
+	RequestsPerMinute   int    `yaml:"requests-per-minute"`
+	MaxConcurrent       int    `yaml:"max-concurrent"`
+	DailyRequestBudget  int    `yaml:"daily-request-budget"`
+	TrustProxyHeaders   bool   `yaml:"trust-proxy-headers"`
 }
+
+type AIChatLimits struct {
+	MaxRequestBodyBytes int
+	MaxMessageRunes     int
+	RequestsPerMinute   int
+	MaxConcurrent       int
+	DailyRequestBudget  int
+}
+
+const (
+	defaultHTTPMaxRequestBodyBytes = 32 * 1024 * 1024
+	defaultAIChatMaxRequestBody    = 64 * 1024
+	defaultAIChatMaxMessageRunes   = 4000
+	defaultAIChatRequestsPerMinute = 6
+	defaultAIChatMaxConcurrent     = 1
+	defaultAIChatDailyBudget       = 50
+	minimumSecretBytes             = 32
+)
 
 type NotifyConfig struct {
 	ServerChanKey string `yaml:"server-chan-key"`
@@ -60,25 +90,167 @@ func InitConfig(path string) *Config {
 	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
 	err = yaml.NewDecoder(f).Decode(conf)
 	if err != nil {
 		panic(err)
+	}
+	if err = conf.Validate(); err != nil {
+		panic("invalid configuration: " + err.Error())
 	}
 
 	return conf
 }
 
 func (c *Config) EffectiveJWTKey() string {
-	if v := os.Getenv("PERSONAL_PAGE_JWT_KEY"); v != "" {
+	if v := strings.TrimSpace(os.Getenv("PERSONAL_PAGE_JWT_KEY")); v != "" {
 		return v
 	}
-	if c.HttpConfig.JWTKey != "" {
-		return c.HttpConfig.JWTKey
+	if v := strings.TrimSpace(c.HttpConfig.JWTKey); v != "" {
+		return v
 	}
-	if c.HttpConfig.SecretKey != "" {
-		return c.HttpConfig.SecretKey
+	if v := strings.TrimSpace(c.HttpConfig.SecretKey); v != "" {
+		return v
 	}
-	return "secret"
+	return ""
+}
+
+func (c *Config) EffectiveSessionKey() string {
+	if v := strings.TrimSpace(os.Getenv("PERSONAL_PAGE_SESSION_KEY")); v != "" {
+		return v
+	}
+	if v := strings.TrimSpace(c.HttpConfig.SessionKey); v != "" {
+		return v
+	}
+	return deriveKey(c.EffectiveJWTKey(), "personal-page/session-cookie/v1")
+}
+
+func (c *Config) EffectiveAIChatIdentityKey() string {
+	if v := strings.TrimSpace(os.Getenv("AICHAT_IDENTITY_KEY")); v != "" {
+		return v
+	}
+	return deriveKey(c.EffectiveJWTKey(), "personal-page/aichat-identity/v1")
+}
+
+func deriveKey(secret string, purpose string) string {
+	if secret == "" {
+		return ""
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(purpose))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func (c *Config) Validate() error {
+	if err := validateSecret("JWT key", c.EffectiveJWTKey()); err != nil {
+		return err
+	}
+	if explicitSessionKey := explicitSecret("PERSONAL_PAGE_SESSION_KEY", c.HttpConfig.SessionKey); explicitSessionKey != "" {
+		if err := validateSecret("session key", explicitSessionKey); err != nil {
+			return err
+		}
+	}
+	if identityKey := strings.TrimSpace(os.Getenv("AICHAT_IDENTITY_KEY")); identityKey != "" {
+		if err := validateSecret("AI chat identity key", identityKey); err != nil {
+			return err
+		}
+	}
+	if _, err := c.EffectiveHTTPMaxRequestBodyBytes(); err != nil {
+		return err
+	}
+	if _, err := c.EffectiveAIChatLimits(); err != nil {
+		return err
+	}
+	if _, err := c.EffectiveAIChatTrustProxyHeaders(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func explicitSecret(envName string, configured string) string {
+	if value := strings.TrimSpace(os.Getenv(envName)); value != "" {
+		return value
+	}
+	return strings.TrimSpace(configured)
+}
+
+func validateSecret(name string, value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("%s is required", name)
+	}
+	if strings.EqualFold(value, "secret") {
+		return fmt.Errorf("%s must not use the insecure literal \"secret\"", name)
+	}
+	if len([]byte(value)) < minimumSecretBytes {
+		return fmt.Errorf("%s must contain at least %d bytes", name, minimumSecretBytes)
+	}
+	return nil
+}
+
+func (c *Config) EffectiveHTTPMaxRequestBodyBytes() (int, error) {
+	return effectivePositiveInt("HTTP_MAX_REQUEST_BODY_BYTES", 0, defaultHTTPMaxRequestBodyBytes)
+}
+
+func (c *Config) EffectiveAIChatTrustProxyHeaders() (bool, error) {
+	if raw := strings.TrimSpace(os.Getenv("AICHAT_TRUST_PROXY_HEADERS")); raw != "" {
+		value, err := strconv.ParseBool(raw)
+		if err != nil {
+			return false, fmt.Errorf("AICHAT_TRUST_PROXY_HEADERS must be true or false")
+		}
+		return value, nil
+	}
+	return c.AIChatConfig.TrustProxyHeaders, nil
+}
+
+func (c *Config) EffectiveAIChatLimits() (AIChatLimits, error) {
+	maxBody, err := effectivePositiveInt("AICHAT_MAX_REQUEST_BODY_BYTES", c.AIChatConfig.MaxRequestBodyBytes, defaultAIChatMaxRequestBody)
+	if err != nil {
+		return AIChatLimits{}, err
+	}
+	maxMessage, err := effectivePositiveInt("AICHAT_MAX_MESSAGE_RUNES", c.AIChatConfig.MaxMessageRunes, defaultAIChatMaxMessageRunes)
+	if err != nil {
+		return AIChatLimits{}, err
+	}
+	requestsPerMinute, err := effectivePositiveInt("AICHAT_REQUESTS_PER_MINUTE", c.AIChatConfig.RequestsPerMinute, defaultAIChatRequestsPerMinute)
+	if err != nil {
+		return AIChatLimits{}, err
+	}
+	maxConcurrent, err := effectivePositiveInt("AICHAT_MAX_CONCURRENT", c.AIChatConfig.MaxConcurrent, defaultAIChatMaxConcurrent)
+	if err != nil {
+		return AIChatLimits{}, err
+	}
+	dailyBudget, err := effectivePositiveInt("AICHAT_DAILY_REQUEST_BUDGET", c.AIChatConfig.DailyRequestBudget, defaultAIChatDailyBudget)
+	if err != nil {
+		return AIChatLimits{}, err
+	}
+	if maxMessage > maxBody {
+		return AIChatLimits{}, fmt.Errorf("AICHAT_MAX_MESSAGE_RUNES must not exceed AICHAT_MAX_REQUEST_BODY_BYTES")
+	}
+	return AIChatLimits{
+		MaxRequestBodyBytes: maxBody,
+		MaxMessageRunes:     maxMessage,
+		RequestsPerMinute:   requestsPerMinute,
+		MaxConcurrent:       maxConcurrent,
+		DailyRequestBudget:  dailyBudget,
+	}, nil
+}
+
+func effectivePositiveInt(envName string, configured int, fallback int) (int, error) {
+	if raw := strings.TrimSpace(os.Getenv(envName)); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value <= 0 {
+			return 0, fmt.Errorf("%s must be a positive integer", envName)
+		}
+		return value, nil
+	}
+	if configured < 0 {
+		return 0, fmt.Errorf("%s configured value must be a positive integer", envName)
+	}
+	if configured > 0 {
+		return configured, nil
+	}
+	return fallback, nil
 }
 
 func (c *Config) EffectiveNotifyKey() string {

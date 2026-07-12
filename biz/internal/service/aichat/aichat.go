@@ -10,12 +10,16 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/hertz-contrib/sessions"
+	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/internal/domain"
 	"personal-page-be/biz/internal/dto"
 	"personal-page-be/biz/internal/response"
@@ -97,44 +101,81 @@ type difyNodeData struct {
 }
 
 func (s *AIChatService) SendMessage(ctx context.Context, c *app.RequestContext) {
-	var req sendMessageReq
-	if err := c.BindAndValidate(&req); err != nil {
-		response.Error(c, 2001, "参数错误: "+err.Error())
+	limits, err := s.Config.EffectiveAIChatLimits()
+	if err != nil {
+		writeAIChatError(c, http.StatusServiceUnavailable, 5001, "AI chat limits are not configured correctly", 0)
 		return
 	}
-	if req.Message == "" {
-		response.Error(c, 2001, "message cannot be empty")
+	if contentLength := c.Request.Header.ContentLength(); contentLength > limits.MaxRequestBodyBytes {
+		writeAIChatError(c, http.StatusRequestEntityTooLarge, 2001, errAIChatRequestTooLarge.Error(), 0)
+		return
+	}
+	body, err := c.Body()
+	if err != nil {
+		writeAIChatError(c, http.StatusBadRequest, 2001, "unable to read request body", 0)
+		return
+	}
+	req, err := decodeSendMessage(body, limits)
+	if err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, errAIChatRequestTooLarge) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		writeAIChatError(c, status, 2001, err.Error(), 0)
 		return
 	}
 	if s.Config.EffectiveAIChatAPIKey() == "" {
-		response.Error(c, 5001, "AI chat API key is not configured")
+		writeAIChatError(c, http.StatusServiceUnavailable, 5001, "AI chat API key is not configured", 0)
+		return
+	}
+
+	identity, err := s.requestIdentity(c)
+	if err != nil {
+		s.Logger.Errorf("resolve AI chat identity failed: %v", err)
+		writeAIChatError(c, http.StatusServiceUnavailable, 5001, "AI chat identity is temporarily unavailable", 0)
+		return
+	}
+	lease, denial := s.guard.acquire(identity.IdentityKey, identity.IPKey)
+	if denial != nil {
+		writeGuardDenial(c, denial)
+		return
+	}
+	if denial, budgetErr := s.reservePersistentDailyBudget(identity, limits); budgetErr != nil {
+		lease.release()
+		s.Logger.Errorf("reserve AI chat daily budget failed: %v", budgetErr)
+		writeAIChatError(c, http.StatusServiceUnavailable, 5001, "AI chat budget reservation is temporarily unavailable", 0)
+		return
+	} else if denial != nil {
+		lease.release()
+		writeGuardDenial(c, denial)
 		return
 	}
 
 	reader, writer := io.Pipe()
+	streamCtx, cancel := context.WithCancel(ctx)
 	c.SetContentType("text/event-stream; charset=utf-8")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
 	c.SetBodyStream(reader, -1)
 
-	userID, username := s.userFromRequest(c)
-	usage := &aiUsageCapture{
-		RequestID:      uuid.NewString(),
-		UserID:         userID,
-		Username:       username,
-		Channel:        s.Config.EffectiveAIChatChannel(),
-		Model:          s.Config.EffectiveAIChatModel(),
-		ConversationID: req.ConversationID,
-		Currency:       "USD",
-	}
+	usage := s.newUsageCapture(req, identity)
 
 	go func() {
+		defer lease.release()
+		defer cancel()
 		defer func() {
 			_ = writer.Close()
 		}()
-		if err := s.streamDify(context.Background(), req, writer, usage); err != nil {
+		streamWriter := &cancelOnWriteError{Writer: writer, cancel: cancel}
+		if err := s.streamDify(streamCtx, req, identity.DifyUser, streamWriter, usage); err != nil {
+			if streamCtx.Err() != nil || errors.Is(err, io.ErrClosedPipe) {
+				s.Logger.Infof("AI chat stream canceled: request_id=%s", usage.RequestID)
+				s.saveUsage(usage, domain.AIUsageStatusFailed, err)
+				return
+			}
 			s.Logger.Error("AI chat stream failed: " + err.Error())
-			_ = writeSSE(writer, eventTypeError, err.Error())
+			_ = writeSSE(streamWriter, eventTypeError, "AI chat upstream request failed")
 			s.saveUsage(usage, domain.AIUsageStatusFailed, err)
 			return
 		}
@@ -142,14 +183,27 @@ func (s *AIChatService) SendMessage(ctx context.Context, c *app.RequestContext) 
 	}()
 }
 
-func (s *AIChatService) streamDify(ctx context.Context, req sendMessageReq, writer io.Writer, usage *aiUsageCapture) error {
+type cancelOnWriteError struct {
+	io.Writer
+	cancel context.CancelFunc
+}
+
+func (w *cancelOnWriteError) Write(payload []byte) (int, error) {
+	n, err := w.Writer.Write(payload)
+	if err != nil && w.cancel != nil {
+		w.cancel()
+	}
+	return n, err
+}
+
+func (s *AIChatService) streamDify(ctx context.Context, req sendMessageReq, difyUser string, writer io.Writer, usage *aiUsageCapture) error {
 	difyReq := difyRequest{
 		Query:            req.Message,
 		ConversationID:   req.ConversationID,
 		Inputs:           map[string]interface{}{},
 		ResponseMode:     "streaming",
 		AutoGenerateName: false,
-		User:             "default_user_001",
+		User:             difyUser,
 	}
 	reqBody, err := json.Marshal(difyReq)
 	if err != nil {
@@ -172,7 +226,7 @@ func (s *AIChatService) streamDify(ctx context.Context, req sendMessageReq, writ
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 32*1024))
 		var errResp difyErrorResponse
 		if jsonErr := json.Unmarshal(bodyBytes, &errResp); jsonErr == nil && errResp.Message != "" {
 			return fmt.Errorf("dify api error: %s", errResp.Message)
@@ -274,6 +328,8 @@ type aiUsageCapture struct {
 	RequestID        string
 	UserID           uint
 	Username         string
+	IdentityKey      string
+	IPKey            string
 	Channel          string
 	Model            string
 	ConversationID   string
@@ -283,6 +339,20 @@ type aiUsageCapture struct {
 	TotalTokens      int64
 	TotalPrice       float64
 	Currency         string
+}
+
+func (s *AIChatService) newUsageCapture(req sendMessageReq, identity requestIdentity) *aiUsageCapture {
+	return &aiUsageCapture{
+		RequestID:      uuid.NewString(),
+		UserID:         identity.UserID,
+		Username:       identity.Username,
+		IdentityKey:    identity.IdentityKey,
+		IPKey:          identity.IPKey,
+		Channel:        s.Config.EffectiveAIChatChannel(),
+		Model:          s.Config.EffectiveAIChatModel(),
+		ConversationID: req.ConversationID,
+		Currency:       "USD",
+	}
 }
 
 func (u *aiUsageCapture) applyMetadata(raw json.RawMessage) {
@@ -338,6 +408,8 @@ func (s *AIChatService) saveUsage(usage *aiUsageCapture, status string, err erro
 	if saveErr := s.Repo.SaveAIUsage(&domain.AIUsageEntity{
 		UserID:           usage.UserID,
 		Username:         usage.Username,
+		IdentityKey:      usage.IdentityKey,
+		IPKey:            usage.IPKey,
 		Channel:          usage.Channel,
 		Model:            usage.Model,
 		ConversationID:   usage.ConversationID,
@@ -481,25 +553,56 @@ func (s *AIChatService) currentUser(ctx context.Context, c *app.RequestContext) 
 	return nil, false
 }
 
-func (s *AIChatService) userFromRequest(c *app.RequestContext) (uint, string) {
-	header := string(c.GetHeader("Authorization"))
-	if header == "" {
-		return 0, "anonymous"
+func (s *AIChatService) requestIdentity(c *app.RequestContext) (requestIdentity, error) {
+	trustProxyHeaders, err := s.Config.EffectiveAIChatTrustProxyHeaders()
+	if err != nil {
+		return requestIdentity{}, err
 	}
-	tokenText := strings.TrimSpace(strings.TrimPrefix(header, "Bearer"))
-	if tokenText == "" || tokenText == header {
-		return 0, "anonymous"
+	auth := s.authenticatedFromBearer(c)
+	if auth.UserID == 0 && auth.Username == "" {
+		if _, hasSession := c.Get(sessions.DefaultKey); hasSession {
+			session := sessions.Default(c)
+			if value := session.Get("username"); value != nil {
+				if username, ok := value.(string); ok && strings.TrimSpace(username) != "" {
+					user, err := s.Repo.FindUser(username)
+					if err != nil {
+						return requestIdentity{}, err
+					}
+					if user != nil && user.ID != 0 {
+						auth = authenticatedIdentity{UserID: user.ID, Username: user.Username}
+					}
+				}
+			}
+		}
+	}
+	identity := buildRequestIdentity(
+		s.Config.EffectiveAIChatIdentityKey(),
+		auth,
+		string(c.GetHeader(aiVisitorHeader)),
+		canonicalRequestIP(c, trustProxyHeaders),
+	)
+	return identity, nil
+}
+
+func (s *AIChatService) authenticatedFromBearer(c *app.RequestContext) authenticatedIdentity {
+	header := string(c.GetHeader("Authorization"))
+	if !strings.HasPrefix(header, "Bearer ") {
+		return authenticatedIdentity{}
+	}
+	tokenText := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
+	if tokenText == "" {
+		return authenticatedIdentity{}
 	}
 
 	claims := jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(tokenText, claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if token.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(s.Config.EffectiveJWTKey()), nil
 	})
 	if err != nil || token == nil || !token.Valid {
-		return 0, "anonymous"
+		return authenticatedIdentity{}
 	}
 
 	username, _ := claims["username"].(string)
@@ -512,10 +615,57 @@ func (s *AIChatService) userFromRequest(c *app.RequestContext) (uint, string) {
 	case int64:
 		userID = uint(v)
 	}
-	if username == "" {
-		username = "anonymous"
+	return authenticatedIdentity{UserID: userID, Username: strings.TrimSpace(username)}
+}
+
+func (s *AIChatService) reservePersistentDailyBudget(identity requestIdentity, limits config.AIChatLimits) (*guardDenial, error) {
+	now := time.Now()
+	location := usageStatsLocation()
+	local := now.In(location)
+	start := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, location)
+	end := start.AddDate(0, 0, 1)
+
+	allowed, err := s.Repo.ReserveAIUsageDailyQuota(start.Format("2006-01-02"), identity.IdentityKey, identity.IPKey, limits.DailyRequestBudget)
+	if err != nil {
+		return nil, err
 	}
-	return userID, username
+	if !allowed {
+		return &guardDenial{Reason: guardDeniedDaily, RetryAfter: end.Sub(now)}, nil
+	}
+	return nil, nil
+}
+
+func writeGuardDenial(c *app.RequestContext, denial *guardDenial) {
+	message := "AI chat request limit reached"
+	code := 4291
+	if denial != nil {
+		switch denial.Reason {
+		case guardDeniedConcurrent:
+			message = "An AI chat request is already in progress for this visitor"
+			code = 4292
+		case guardDeniedDaily:
+			message = "AI chat daily request budget reached"
+			code = 4293
+		}
+		writeAIChatError(c, http.StatusTooManyRequests, code, message, denial.RetryAfter)
+		return
+	}
+	writeAIChatError(c, http.StatusTooManyRequests, code, message, time.Second)
+}
+
+func writeAIChatError(c *app.RequestContext, status int, code int, message string, retryAfter time.Duration) {
+	if retryAfter > 0 {
+		seconds := int((retryAfter + time.Second - 1) / time.Second)
+		if seconds < 1 {
+			seconds = 1
+		}
+		c.Header("Retry-After", strconv.Itoa(seconds))
+	}
+	c.JSON(status, utils.H{
+		"code":    code,
+		"message": message,
+		"msg":     message,
+	})
 }
 
 func (s *AIChatService) usageStats(c *app.RequestContext, userID *uint, includeChannels bool) (*dto.AIUsageStatsResp, error) {

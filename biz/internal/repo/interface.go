@@ -17,6 +17,7 @@ type IRepository interface {
 	SaveUserAndAudit(user *domain.UserEntity, audit *domain.AdminAuditLogEntity) error
 	RemoveUserAndAudit(userID uint, audit *domain.AdminAuditLogEntity) error
 	SaveAIUsage(usage *domain.AIUsageEntity) error
+	ReserveAIUsageDailyQuota(quotaDay string, identityKey string, ipKey string, limit int) (bool, error)
 	ListAIUsage(userID *uint, startAt *time.Time, endAt *time.Time, model string, channel string) (*[]domain.AIUsageEntity, error)
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
@@ -71,6 +72,9 @@ func NewRepository(db *gorm.DB) IRepository {
 	}
 	if err := db.AutoMigrate(&domain.AIUsageEntity{}); err != nil {
 		panic("migrate ai usage model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.AIUsageDailyQuotaEntity{}); err != nil {
+		panic("migrate ai usage daily quota model failed: " + err.Error())
 	}
 	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
 		panic("migrate file model failed: " + err.Error())
