@@ -36,6 +36,9 @@ type BlogPostDTO struct {
 	CreatedAt           int64    `json:"createdAt"`
 	UpdatedAt           int64    `json:"updatedAt"`
 	PublishedAt         int64    `json:"publishedAt,omitempty"`
+	LikeCount           int64    `json:"likeCount"`
+	CommentCount        int64    `json:"commentCount"`
+	ViewCount           *int64   `json:"viewCount,omitempty"`
 }
 
 type BlogPostListDTO struct {
@@ -87,4 +90,39 @@ type BlogAssetDTO struct {
 	URL        string `json:"url"`
 	SignedURL  string `json:"signedUrl,omitempty"`
 	Ready      bool   `json:"ready"`
+}
+
+type BlogLikeStateDTO struct {
+	Liked     bool  `json:"liked"`
+	LikeCount int64 `json:"likeCount"`
+}
+
+type CreateBlogCommentReq struct {
+	Content string `json:"content"`
+}
+
+type ReviewBlogCommentReq struct {
+	Status string `json:"status"`
+}
+
+type BlogCommentDTO struct {
+	ID               uint   `json:"id"`
+	PostID           uint   `json:"postId"`
+	PostSlug         string `json:"postSlug"`
+	PostTitle        string `json:"postTitle"`
+	Content          string `json:"content"`
+	Status           string `json:"status,omitempty"`
+	AuthorUsername   string `json:"authorUsername"`
+	AuthorNickname   string `json:"authorNickname"`
+	AuthorAvatar     string `json:"authorAvatar,omitempty"`
+	ReviewerUsername string `json:"reviewerUsername,omitempty"`
+	CreatedAt        int64  `json:"createdAt"`
+	ReviewedAt       int64  `json:"reviewedAt,omitempty"`
+}
+
+type BlogCommentListDTO struct {
+	Items    []*BlogCommentDTO `json:"items"`
+	Total    int64             `json:"total"`
+	Page     int               `json:"page"`
+	PageSize int               `json:"pageSize"`
 }

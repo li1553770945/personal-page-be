@@ -29,6 +29,13 @@ type IBlogService interface {
 	SignAssetUpload(ctx context.Context, c *app.RequestContext)
 	ConfirmAssetUpload(ctx context.Context, c *app.RequestContext)
 	ServeAsset(ctx context.Context, c *app.RequestContext)
+	TrackView(ctx context.Context, c *app.RequestContext)
+	GetLikeState(ctx context.Context, c *app.RequestContext)
+	ToggleLike(ctx context.Context, c *app.RequestContext)
+	ListPublicComments(ctx context.Context, c *app.RequestContext)
+	CreateComment(ctx context.Context, c *app.RequestContext)
+	ListAdminComments(ctx context.Context, c *app.RequestContext)
+	ReviewComment(ctx context.Context, c *app.RequestContext)
 }
 
 func NewBlogService(repo repo.IRepository, cfg *config.Config) IBlogService {

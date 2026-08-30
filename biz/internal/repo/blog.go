@@ -185,3 +185,114 @@ func (Repo *Repository) FindBlogAssetByID(assetID uint) (*domain.BlogAssetEntity
 func (Repo *Repository) RemoveBlogAsset(assetID uint) error {
 	return Repo.DB.Delete(&domain.BlogAssetEntity{}, assetID).Error
 }
+
+func (Repo *Repository) IncrementBlogPostView(postID uint) error {
+	return Repo.DB.Model(&domain.BlogPostEntity{}).
+		Where("id = ? AND status = ?", postID, domain.BlogStatusPublished).
+		UpdateColumn("view_count", gorm.Expr("view_count + ?", 1)).Error
+}
+
+func (Repo *Repository) GetBlogPostLike(postID, userID uint) (*domain.BlogLikeEntity, error) {
+	var like domain.BlogLikeEntity
+	err := Repo.DB.Where("post_id = ? AND user_id = ?", postID, userID).Limit(1).Find(&like).Error
+	return &like, err
+}
+
+func (Repo *Repository) ToggleBlogPostLike(postID, userID uint) (bool, int64, error) {
+	var liked bool
+	var count int64
+	err := Repo.DB.Transaction(func(tx *gorm.DB) error {
+		var post domain.BlogPostEntity
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", postID).First(&post).Error; err != nil {
+			return err
+		}
+		if post.Status != domain.BlogStatusPublished {
+			return errors.New("blog post is not published")
+		}
+
+		var existing domain.BlogLikeEntity
+		if err := tx.Where("post_id = ? AND user_id = ?", postID, userID).Limit(1).Find(&existing).Error; err != nil {
+			return err
+		}
+		if existing.ID != 0 {
+			if err := tx.Unscoped().Delete(&existing).Error; err != nil {
+				return err
+			}
+			if post.LikeCount > 0 {
+				post.LikeCount--
+			}
+			liked = false
+		} else {
+			if err := tx.Create(&domain.BlogLikeEntity{PostID: postID, UserID: userID}).Error; err != nil {
+				return err
+			}
+			post.LikeCount++
+			liked = true
+		}
+		count = post.LikeCount
+		return tx.Model(&post).UpdateColumn("like_count", post.LikeCount).Error
+	})
+	return liked, count, err
+}
+
+func (Repo *Repository) CreateBlogComment(comment *domain.BlogCommentEntity) error {
+	return Repo.DB.Create(comment).Error
+}
+
+func (Repo *Repository) ListApprovedBlogComments(postID uint, offset, limit int) (*[]domain.BlogCommentEntity, int64, error) {
+	var comments []domain.BlogCommentEntity
+	var count int64
+	db := Repo.DB.Model(&domain.BlogCommentEntity{}).
+		Where("post_id = ? AND status = ?", postID, domain.BlogCommentStatusApproved)
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&comments).Error
+	return &comments, count, err
+}
+
+func (Repo *Repository) ListBlogComments(status string, offset, limit int) (*[]domain.BlogCommentEntity, int64, error) {
+	var comments []domain.BlogCommentEntity
+	var count int64
+	db := Repo.DB.Model(&domain.BlogCommentEntity{})
+	if status != "" {
+		db = db.Where("status = ?", status)
+	}
+	if err := db.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+	err := db.Order("created_at DESC").Offset(offset).Limit(limit).Find(&comments).Error
+	return &comments, count, err
+}
+
+func (Repo *Repository) ReviewBlogComment(commentID uint, status string, reviewerID uint, reviewerUsername string, reviewedAt time.Time) (*domain.BlogCommentEntity, error) {
+	var comment domain.BlogCommentEntity
+	err := Repo.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&comment, commentID).Error; err != nil {
+			return err
+		}
+		var post domain.BlogPostEntity
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&post, comment.PostID).Error; err != nil {
+			return err
+		}
+
+		wasApproved := comment.Status == domain.BlogCommentStatusApproved
+		willBeApproved := status == domain.BlogCommentStatusApproved
+		if !wasApproved && willBeApproved {
+			post.ApprovedCommentCount++
+		}
+		if wasApproved && !willBeApproved && post.ApprovedCommentCount > 0 {
+			post.ApprovedCommentCount--
+		}
+
+		comment.Status = status
+		comment.ReviewerID = reviewerID
+		comment.ReviewerUsername = reviewerUsername
+		comment.ReviewedAt = &reviewedAt
+		if err := tx.Save(&comment).Error; err != nil {
+			return err
+		}
+		return tx.Model(&post).UpdateColumn("approved_comment_count", post.ApprovedCommentCount).Error
+	})
+	return &comment, err
+}

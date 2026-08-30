@@ -53,6 +53,8 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.POST("/blog/posts/:id/revisions/:revisionId/restore", append(middlewire.UserMiddleware(), App.BlogService.RestoreRevision)...)
 	adminApi.POST("/blog/assets/sign", append(middlewire.UserMiddleware(), App.BlogService.SignAssetUpload)...)
 	adminApi.POST("/blog/assets/:assetId/confirm", append(middlewire.UserMiddleware(), App.BlogService.ConfirmAssetUpload)...)
+	adminApi.GET("/blog/comments", append(middlewire.UserMiddleware(), App.BlogService.ListAdminComments)...)
+	adminApi.POST("/blog/comments/:id/review", append(middlewire.UserMiddleware(), App.BlogService.ReviewComment)...)
 
 	fileApi := api.Group("/files")
 
@@ -95,6 +97,11 @@ func customizedRegister(r *server.Hertz) {
 	blogApi := api.Group("/blog")
 	blogApi.GET("/posts", App.BlogService.ListPublicPosts)
 	blogApi.GET("/posts/:slug", App.BlogService.GetPublicPost)
+	blogApi.POST("/posts/:slug/view", App.BlogService.TrackView)
+	blogApi.GET("/posts/:slug/like", append(middlewire.UserMiddleware(), App.BlogService.GetLikeState)...)
+	blogApi.POST("/posts/:slug/like", append(middlewire.UserMiddleware(), App.BlogService.ToggleLike)...)
+	blogApi.GET("/posts/:slug/comments", App.BlogService.ListPublicComments)
+	blogApi.POST("/posts/:slug/comments", append(middlewire.UserMiddleware(), App.BlogService.CreateComment)...)
 	blogApi.GET("/legacy/:legacy", App.BlogService.GetPublicPost)
 	blogApi.GET("/assets/:assetId", App.BlogService.ServeAsset)
 

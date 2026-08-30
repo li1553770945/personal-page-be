@@ -37,6 +37,13 @@ type IRepository interface {
 	SaveBlogAsset(asset *domain.BlogAssetEntity) error
 	FindBlogAssetByID(assetID uint) (*domain.BlogAssetEntity, error)
 	RemoveBlogAsset(assetID uint) error
+	IncrementBlogPostView(postID uint) error
+	GetBlogPostLike(postID, userID uint) (*domain.BlogLikeEntity, error)
+	ToggleBlogPostLike(postID, userID uint) (bool, int64, error)
+	CreateBlogComment(comment *domain.BlogCommentEntity) error
+	ListApprovedBlogComments(postID uint, offset, limit int) (*[]domain.BlogCommentEntity, int64, error)
+	ListBlogComments(status string, offset, limit int) (*[]domain.BlogCommentEntity, int64, error)
+	ReviewBlogComment(commentID uint, status string, reviewerID uint, reviewerUsername string, reviewedAt time.Time) (*domain.BlogCommentEntity, error)
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
@@ -105,6 +112,12 @@ func NewRepository(db *gorm.DB) IRepository {
 	}
 	if err := db.AutoMigrate(&domain.BlogMigrationEntity{}); err != nil {
 		panic("migrate blog migration model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogLikeEntity{}); err != nil {
+		panic("migrate blog like model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogCommentEntity{}); err != nil {
+		panic("migrate blog comment model failed: " + err.Error())
 	}
 	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
 		panic("migrate file model failed: " + err.Error())

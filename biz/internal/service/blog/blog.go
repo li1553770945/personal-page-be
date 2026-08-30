@@ -370,6 +370,7 @@ func blogPostToDTO(post *domain.BlogPostEntity, revision *domain.BlogRevisionEnt
 		Cover: revision.Cover, Categories: decodeList(revision.Categories), Tags: decodeList(revision.Tags),
 		RevisionID: revision.ID, Version: revision.Version, ChangeSummary: revision.ChangeSummary,
 		AuthorUsername: revision.AuthorUsername, CreatedAt: post.CreatedAt.Unix(), UpdatedAt: post.UpdatedAt.Unix(),
+		LikeCount: post.LikeCount, CommentCount: post.ApprovedCommentCount,
 	}
 	if includeContent {
 		result.ContentMarkdown = revision.ContentMarkdown
@@ -378,6 +379,8 @@ func blogPostToDTO(post *domain.BlogPostEntity, revision *domain.BlogRevisionEnt
 		result.DraftRevisionID = post.DraftRevisionID
 		result.PublishedRevisionID = post.PublishedRevisionID
 		result.CoverObjectPath = revision.CoverObjectPath
+		viewCount := post.ViewCount
+		result.ViewCount = &viewCount
 	}
 	if post.PublishedAt != nil {
 		result.PublishedAt = post.PublishedAt.Unix()
