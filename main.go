@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"personal-page-be/biz/container"
+	"personal-page-be/biz/infra/weborigin"
 	"personal-page-be/biz/middlewire"
 	"strings"
 	"time"
@@ -58,7 +59,7 @@ func main() {
 	store := cookie.NewStore([]byte(App.Config.EffectiveSessionKey()))
 	h.Use(sessions.New("user", store))
 	h.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "https://peacesheep.xyz", "https://www.peacesheep.xyz", "https://api.peacesheep.xyz"},
+		AllowOriginFunc:  weborigin.Allowed,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "X-AI-Visitor-ID"},
 		ExposeHeaders:    []string{"Retry-After"},

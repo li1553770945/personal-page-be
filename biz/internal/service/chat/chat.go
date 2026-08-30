@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/hertz-contrib/websocket"
+	"personal-page-be/biz/infra/weborigin"
 	"personal-page-be/biz/internal/domain"
 	"personal-page-be/biz/internal/response"
 )
@@ -289,11 +290,7 @@ func (c *roomClient) write(message wireMessage) error {
 }
 
 func allowedChatOrigin(c *app.RequestContext) bool {
-	origin := strings.TrimSpace(string(c.GetHeader("Origin")))
-	if origin == "" {
-		return true
-	}
-	return origin == "https://peacesheep.xyz" || origin == "https://www.peacesheep.xyz" || strings.HasPrefix(origin, "http://localhost:")
+	return weborigin.Allowed(string(c.GetHeader("Origin")))
 }
 
 func randomText(byteLength int) (string, error) {
