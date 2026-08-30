@@ -60,7 +60,7 @@ func (BlogAssetEntity) TableName() string { return "blog_assets" }
 
 type BlogMigrationEntity struct {
 	do.BaseModel
-	Key string `gorm:"uniqueIndex;size:191" json:"key"`
+	MigrationKey string `gorm:"column:migration_key;uniqueIndex;size:191" json:"migration_key"`
 }
 
 func (BlogMigrationEntity) TableName() string { return "blog_migrations" }

@@ -18,13 +18,13 @@ func (Repo *Repository) CountBlogPosts() (int64, error) {
 
 func (Repo *Repository) HasBlogMigration(key string) (bool, error) {
 	var count int64
-	err := Repo.DB.Model(&domain.BlogMigrationEntity{}).Where("key = ?", key).Count(&count).Error
+	err := Repo.DB.Model(&domain.BlogMigrationEntity{}).Where("migration_key = ?", key).Count(&count).Error
 	return count > 0, err
 }
 
 func (Repo *Repository) SaveBlogMigration(key string) error {
-	migration := &domain.BlogMigrationEntity{Key: key}
-	return Repo.DB.Where("key = ?", key).FirstOrCreate(migration).Error
+	migration := &domain.BlogMigrationEntity{MigrationKey: key}
+	return Repo.DB.Where("migration_key = ?", key).FirstOrCreate(migration).Error
 }
 
 func (Repo *Repository) FindBlogPostByID(postID uint) (*domain.BlogPostEntity, error) {
