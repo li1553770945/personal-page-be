@@ -3,6 +3,7 @@ package container
 import (
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/internal/service/aichat"
+	"personal-page-be/biz/internal/service/blog"
 	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
@@ -22,6 +23,7 @@ type Container struct {
 	ProjectService project.IProjectService
 	SlideService   slide.ISlideService
 	AIChatService  aichat.IAIChatService
+	BlogService    blog.IBlogService
 }
 
 func NewContainer(config *config.Config, userService user.IUserService,
@@ -32,6 +34,7 @@ func NewContainer(config *config.Config, userService user.IUserService,
 	projectService project.IProjectService,
 	slideService slide.ISlideService,
 	aiChatService aichat.IAIChatService,
+	blogService blog.IBlogService,
 ) *Container {
 	return &Container{
 		Config:         config,
@@ -43,6 +46,7 @@ func NewContainer(config *config.Config, userService user.IUserService,
 		ProjectService: projectService,
 		SlideService:   slideService,
 		AIChatService:  aiChatService,
+		BlogService:    blogService,
 	}
 
 }

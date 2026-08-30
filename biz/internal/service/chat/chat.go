@@ -2,237 +2,304 @@ package chat
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-	"github.com/hertz-contrib/websocket"
-	"github.com/patrickmn/go-cache"
-	"personal-page-be/biz/internal/domain"
-	U "personal-page-be/biz/internal/utils"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"strings"
 	"time"
+
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/hertz-contrib/websocket"
+	"personal-page-be/biz/internal/domain"
+	"personal-page-be/biz/internal/response"
 )
 
-func (s *ChatService) CreateChat(ctx context.Context, c *app.RequestContext) {
-	var upgrader = websocket.HertzUpgrader{
-		CheckOrigin: func(ctx *app.RequestContext) bool {
-			return true
-		},
+const (
+	roomLifetime       = time.Hour
+	chatReadLimit      = 64 * 1024
+	maxRoomClients     = 2
+	clientAuthDeadline = 15 * time.Second
+)
+
+type wireMessage struct {
+	Event string `json:"event"`
+	Type  string `json:"type,omitempty"`
+	Data  string `json:"data,omitempty"`
+}
+
+func (s *ChatService) CreateRoom(ctx context.Context, c *app.RequestContext) {
+	username, _ := ctx.Value("username").(string)
+	user, err := s.Repo.FindUser(username)
+	if err != nil {
+		response.Error(c, 5001, err.Error())
+		return
+	}
+	if user.ID == 0 || !user.CanUse || !domain.IsAdminRole(domain.NormalizeRole(user.Role)) {
+		response.Error(c, 4003, "只有管理员可以创建临时聊天室")
+		return
 	}
 
-	var chatID string
-	// 防止生成重复聊天id
+	room := &roomState{clients: map[string]*roomClient{}, expiresAt: time.Now().Add(roomLifetime)}
 	for {
-		chatID = U.RandSeq(4)
-		_, found := s.Cache.Get(chatID)
-		if !found {
+		room.id, err = randomText(6)
+		if err != nil {
+			response.Error(c, 5001, "生成房间失败")
+			return
+		}
+		s.roomsMu.Lock()
+		if _, exists := s.rooms[room.id]; !exists {
+			s.rooms[room.id] = room
+			s.roomsMu.Unlock()
 			break
 		}
+		s.roomsMu.Unlock()
 	}
-	var chatEntity domain.ChatEntity
-	err := s.Cache.Add(chatID, &chatEntity, cache.DefaultExpiration)
+	client, err := room.addClient()
 	if err != nil {
-		c.JSON(200, utils.H{"code": 5001, "msg": err.Error()})
+		response.Error(c, 5001, err.Error())
 		return
 	}
-	chatEntity.ChatID = chatID
-	chatEntity.CreaterID = U.RandSeq(10)
-
-	err = upgrader.Upgrade(c, func(conn *websocket.Conn) {
-		s.MessageHandler(conn, &chatEntity, "creater")
-	})
-	if err != nil {
-		s.Log.Error("update to websocket failed:", err.Error())
-		c.JSON(200, utils.H{"code": 5001, "msg": err.Error()})
-		return
-	}
-	//c.JSON(200, utils.H{"code": 0, "msg": "创建成功", "data": utils.H{"chat_id": chatEntity.ChatID, "client_id": chatEntity.CreaterID}})
-}
-func (s *ChatService) JoinChat(ctx context.Context, c *app.RequestContext) {
-	var upgrader = websocket.HertzUpgrader{
-		CheckOrigin: func(ctx *app.RequestContext) bool {
-			return true
-		},
-	}
-	ChatID := c.DefaultQuery("chat_id", "")
-	clientID := c.DefaultQuery("client_id", "")
-	chatInterface, found := s.Cache.Get(ChatID)
-	if !found {
-		c.JSON(200, utils.H{"code": 4004, "msg": "未找到相关chat"})
-		return
-	}
-
-	var chatEntity *domain.ChatEntity
-	if entity, ok := chatInterface.(*domain.ChatEntity); ok {
-		chatEntity = entity
-	} else {
-		c.JSON(200, utils.H{"code": 5001, "msg": "内部错误，chatInterface断言失败"})
-		return
-	}
-	var role string
-	if clientID != "" {
-		if clientID == chatEntity.CreaterID {
-			role = "creater"
-		} else if clientID == chatEntity.JoinerID {
-			role = "joiner"
-		} else {
-			c.JSON(200, utils.H{"code": 5001, "msg": "客户端ID错误"})
-			s.Log.Error("client id not found")
-			return
-		}
-	} else {
-		chatEntity.JoinerID = U.RandSeq(10)
-		role = "joiner"
-	}
-
-	err := upgrader.Upgrade(c, func(conn *websocket.Conn) {
-		s.MessageHandler(conn, chatEntity, role)
-	})
-	if err != nil {
-		c.JSON(200, utils.H{"code": 5001, "msg": err.Error()})
-		return
-	}
-
+	response.OK(c, map[string]string{"roomId": room.id, "clientId": client.id, "clientToken": client.token}, "创建成功")
 }
 
-func (s *ChatService) MessageHandler(recvConn *websocket.Conn, chatEntity *domain.ChatEntity, role string) {
-
-	var msgEntity domain.ChatMessageEntity
-	msgEntity.Data = chatEntity.ChatID
-	msgEntity.Type = "chat_id"
-	msgEntity.Time = time.Now()
-	jsonBytes, _ := json.Marshal(msgEntity)
-	err := recvConn.WriteMessage(websocket.TextMessage, jsonBytes)
+func (s *ChatService) JoinRoom(ctx context.Context, c *app.RequestContext) {
+	roomID := strings.TrimSpace(c.DefaultQuery("roomId", ""))
+	if roomID == "" {
+		roomID = strings.TrimSpace(c.DefaultQuery("room_id", ""))
+	}
+	room := s.findRoom(roomID)
+	if room == nil {
+		response.Error(c, 4004, "房间不存在或已过期")
+		return
+	}
+	client, err := room.addClient()
 	if err != nil {
-		s.Log.Error("send chat id failed:", err.Error())
+		response.Error(c, 4009, err.Error())
+		return
+	}
+	response.OK(c, map[string]string{"roomId": room.id, "clientId": client.id, "clientToken": client.token}, "加入成功")
+}
+
+func (s *ChatService) Connect(ctx context.Context, c *app.RequestContext) {
+	roomID := strings.TrimSpace(c.DefaultQuery("roomId", ""))
+	if roomID == "" || s.findRoom(roomID) == nil {
+		c.JSON(404, map[string]interface{}{"code": 4004, "message": "房间不存在或已过期"})
+		return
+	}
+	upgrader := websocket.HertzUpgrader{CheckOrigin: allowedChatOrigin}
+	if err := upgrader.Upgrade(c, func(conn *websocket.Conn) {
+		s.handleConnection(roomID, conn)
+	}); err != nil {
+		s.Log.WithError(err).Warn("upgrade chat websocket failed")
+	}
+}
+
+func (s *ChatService) handleConnection(roomID string, conn *websocket.Conn) {
+	conn.SetReadLimit(chatReadLimit)
+	_ = conn.SetReadDeadline(time.Now().Add(clientAuthDeadline))
+	var auth wireMessage
+	if err := conn.ReadJSON(&auth); err != nil || auth.Event != "im-auth-req" || auth.Data == "" {
+		_ = conn.WriteJSON(wireMessage{Event: "im-close", Data: "认证失败"})
+		_ = conn.Close()
+		return
+	}
+	room := s.findRoom(roomID)
+	if room == nil {
+		_ = conn.WriteJSON(wireMessage{Event: "im-close", Data: "房间不存在或已过期"})
+		_ = conn.Close()
+		return
+	}
+	client := room.authenticate(auth.Data, conn)
+	if client == nil {
+		_ = conn.WriteJSON(wireMessage{Event: "im-close", Data: "客户端凭据无效"})
+		_ = conn.Close()
+		return
+	}
+	defer room.disconnect(client.id, conn)
+	_ = conn.SetReadDeadline(time.Time{})
+	if err := client.write(wireMessage{Event: "im-auth-resp", Data: "ok"}); err != nil {
 		return
 	}
 
-	msgEntity.Type = "client_id"
-	msgEntity.Time = time.Now()
-
-	if role == "creater" {
-		msgEntity.Data = chatEntity.CreaterID
-		chatEntity.CreaterConn = recvConn
-	} else {
-		msgEntity.Data = chatEntity.JoinerID
-		chatEntity.JoinerConn = recvConn
-	}
-
-	jsonBytes, _ = json.Marshal(msgEntity)
-	err = recvConn.WriteMessage(websocket.TextMessage, jsonBytes)
-	if err != nil {
-		s.Log.Error("send client id failed:", err.Error())
-	}
 	for {
-		var result map[string]interface{}
-
-		mt, message, err := recvConn.ReadMessage()
-		if err != nil {
-			s.Log.Error("receive msg failed:", err.Error())
-			if chatEntity.JoinerConn != nil {
-				chatEntity.JoinerConn.Close()
-				chatEntity.JoinerConn = nil
-			}
-			if chatEntity.CreaterConn != nil {
-				chatEntity.CreaterConn.Close()
-				chatEntity.CreaterConn = nil
-			}
+		var message wireMessage
+		if err := conn.ReadJSON(&message); err != nil {
 			return
 		}
-		if err = json.Unmarshal([]byte(message), &result); err != nil {
-			s.Log.Error("convert received message to json failed,message:", message)
-			continue
-		}
-
-		if mt == websocket.TextMessage {
-			var sendMsgEntity domain.ChatMessageEntity
-			sendMsgEntity.Data = result["data"].(string)
-			sendMsgEntity.Type = "client_message"
-			sendMsgEntity.Time = time.Now()
-			jsonBytes, err := json.Marshal(sendMsgEntity)
-			if err != nil {
-				s.Log.Error("convert sendMsgEntity to json failed", err.Error())
+		room.touch()
+		switch message.Event {
+		case "im-ping":
+			if err := client.write(wireMessage{Event: "im-pong", Data: "im-pong"}); err != nil {
+				return
 			}
-
-			if role == "creater" {
-
-				if chatEntity.JoinerConn != nil { // 如果发送方已经上线
-					err = chatEntity.JoinerConn.WriteMessage(mt, jsonBytes)
-					if err != nil {
-						s.Log.Error("send msg to creater failed", err.Error())
-					}
-				} else {
-					sendMsgEntity.Data = ""
-					sendMsgEntity.Type = "warning"
-					sendMsgEntity.Time = time.Now()
-					sendMsgEntity.ErrorMsg = "对方未上线，发送失败"
-					jsonBytes, _ := json.Marshal(sendMsgEntity)
-					recvConn.WriteMessage(websocket.TextMessage, jsonBytes)
-				}
-
-			} else { // 如果是接收方
-				if chatEntity.CreaterConn != nil {
-					err = chatEntity.CreaterConn.WriteMessage(mt, jsonBytes)
-					if err != nil {
-						s.Log.Error("send msg to joiner failed", err.Error())
-					}
-				}
+		case "im-message":
+			if message.Type != "text" && message.Type != "file" {
+				_ = client.write(wireMessage{Event: "im-error", Data: "不支持的消息类型"})
+				continue
 			}
+			if strings.TrimSpace(message.Data) == "" {
+				continue
+			}
+			if err := room.broadcast(client.id, wireMessage{Event: "im-message", Type: message.Type, Data: message.Data}); err != nil {
+				_ = client.write(wireMessage{Event: "im-error", Data: "对方暂未连接，消息未送达"})
+			}
+		default:
+			_ = client.write(wireMessage{Event: "im-error", Data: "未知事件"})
 		}
-
 	}
 }
-func (s *ChatService) GetMessageList(ctx context.Context, c *app.RequestContext) {
-	chatID := c.DefaultQuery("chat_id", "")
-	id := c.DefaultQuery("client_id", "")
-	chatInterface, found := s.Cache.Get(chatID)
-	if !found {
-		c.JSON(200, utils.H{"code": 4004, "msg": "chat不存在或已结束"})
-		return
-	}
-	var chatEntity *domain.ChatEntity
-	if entity, ok := chatInterface.(*domain.ChatEntity); ok {
-		chatEntity = entity
-	} else {
-		c.JSON(200, utils.H{"code": 5001, "msg": "内部错误，chatInterface断言失败"})
-		return
-	}
-	var messages []*domain.ChatMessageEntity
-	if id == chatEntity.JoinerID {
-		chatEntity.CreaterMessageLock.Lock()
-		messages = chatEntity.MessageSendByCreater
 
-		chatEntity.CreaterMessageLock.Unlock()
-		c.JSON(200, utils.H{"code": 0, "data": messages})
-	} else if id == chatEntity.CreaterID {
-		chatEntity.JoinerMessageLock.Lock()
-		messages = chatEntity.MessageSendByJoiner
-		chatEntity.JoinerMessageLock.Unlock()
-		c.JSON(200, utils.H{"code": 0, "data": messages})
-	} else {
-		c.JSON(200, utils.H{"code": 4004, "msg": "无效的ID"})
+func (s *ChatService) findRoom(roomID string) *roomState {
+	if roomID == "" {
+		return nil
+	}
+	s.roomsMu.RLock()
+	room := s.rooms[roomID]
+	s.roomsMu.RUnlock()
+	if room == nil {
+		return nil
+	}
+	room.mu.Lock()
+	expired := time.Now().After(room.expiresAt)
+	room.mu.Unlock()
+	if expired {
+		s.roomsMu.Lock()
+		if s.rooms[roomID] == room {
+			delete(s.rooms, roomID)
+		}
+		s.roomsMu.Unlock()
+		room.closeAll()
+		return nil
+	}
+	return room
+}
+
+func (s *ChatService) cleanupExpiredRooms() {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		var expired []*roomState
+		s.roomsMu.Lock()
+		for id, room := range s.rooms {
+			room.mu.Lock()
+			isExpired := now.After(room.expiresAt)
+			room.mu.Unlock()
+			if isExpired {
+				delete(s.rooms, id)
+				expired = append(expired, room)
+			}
+		}
+		s.roomsMu.Unlock()
+		for _, room := range expired {
+			room.closeAll()
+		}
 	}
 }
-func (s *ChatService) CloseChat(ctx context.Context, c *app.RequestContext) {
-	chatID := string(c.FormValue("chat_id"))
-	id := string(c.FormValue("id"))
-	chatInterface, found := s.Cache.Get(chatID)
-	if !found {
-		c.JSON(200, utils.H{"code": 4004, "msg": "chat不存在或已结束"})
-		return
-	}
-	var chatEntity *domain.ChatEntity
-	if entity, ok := chatInterface.(*domain.ChatEntity); ok {
-		chatEntity = entity
-	} else {
-		c.JSON(200, utils.H{"code": 5001, "msg": "内部错误，chatInterface断言失败"})
-		return
-	}
 
-	if id != chatEntity.CreaterID {
-		c.JSON(200, utils.H{"code": 4003, "msg": "无权进行操作"})
-		return
+func (r *roomState) addClient() (*roomClient, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.clients) >= maxRoomClients {
+		return nil, fmt.Errorf("房间人数已满")
 	}
-	s.Cache.Delete(chatID)
-	c.JSON(200, utils.H{"code": 0, "msg": "操作成功"})
+	id, err := randomText(18)
+	if err != nil {
+		return nil, err
+	}
+	token, err := randomText(32)
+	if err != nil {
+		return nil, err
+	}
+	client := &roomClient{id: id, token: token}
+	r.clients[id] = client
+	r.expiresAt = time.Now().Add(roomLifetime)
+	return client, nil
+}
+
+func (r *roomState) authenticate(token string, conn *websocket.Conn) *roomClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, client := range r.clients {
+		if client.token == token {
+			if client.conn != nil && client.conn != conn {
+				_ = client.conn.Close()
+			}
+			client.conn = conn
+			r.expiresAt = time.Now().Add(roomLifetime)
+			return client
+		}
+	}
+	return nil
+}
+
+func (r *roomState) disconnect(clientID string, conn *websocket.Conn) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if client := r.clients[clientID]; client != nil && client.conn == conn {
+		client.conn = nil
+	}
+}
+
+func (r *roomState) broadcast(senderID string, message wireMessage) error {
+	r.mu.Lock()
+	clients := make([]*roomClient, 0, len(r.clients))
+	for id, client := range r.clients {
+		if id != senderID && client.conn != nil {
+			clients = append(clients, client)
+		}
+	}
+	r.mu.Unlock()
+	if len(clients) == 0 {
+		return fmt.Errorf("peer offline")
+	}
+	for _, client := range clients {
+		if err := client.write(message); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *roomState) touch() {
+	r.mu.Lock()
+	r.expiresAt = time.Now().Add(roomLifetime)
+	r.mu.Unlock()
+}
+
+func (r *roomState) closeAll() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, client := range r.clients {
+		if client.conn != nil {
+			_ = client.conn.WriteJSON(wireMessage{Event: "im-close", Data: "房间已过期"})
+			_ = client.conn.Close()
+			client.conn = nil
+		}
+	}
+}
+
+func (c *roomClient) write(message wireMessage) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	if c.conn == nil {
+		return fmt.Errorf("client offline")
+	}
+	return c.conn.WriteJSON(message)
+}
+
+func allowedChatOrigin(c *app.RequestContext) bool {
+	origin := strings.TrimSpace(string(c.GetHeader("Origin")))
+	if origin == "" {
+		return true
+	}
+	return origin == "https://peacesheep.xyz" || origin == "https://www.peacesheep.xyz" || strings.HasPrefix(origin, "http://localhost:")
+}
+
+func randomText(byteLength int) (string, error) {
+	data := make([]byte, byteLength)
+	if _, err := rand.Read(data); err != nil {
+		return "", err
+	}
+	return strings.TrimRight(base64.RawURLEncoding.EncodeToString(data), "="), nil
 }

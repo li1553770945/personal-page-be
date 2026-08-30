@@ -2,26 +2,44 @@ package chat
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/patrickmn/go-cache"
+	"github.com/hertz-contrib/websocket"
 	"github.com/sirupsen/logrus"
+	"personal-page-be/biz/internal/repo"
 )
 
+type roomClient struct {
+	id      string
+	token   string
+	conn    *websocket.Conn
+	writeMu sync.Mutex
+}
+
+type roomState struct {
+	id        string
+	expiresAt time.Time
+	clients   map[string]*roomClient
+	mu        sync.Mutex
+}
+
 type ChatService struct {
-	Cache *cache.Cache
-	Log   *logrus.Logger
+	Repo    repo.IRepository
+	Log     *logrus.Logger
+	rooms   map[string]*roomState
+	roomsMu sync.RWMutex
 }
 
 type IChatService interface {
-	CreateChat(ctx context.Context, c *app.RequestContext)
-	JoinChat(ctx context.Context, c *app.RequestContext)
-	CloseChat(ctx context.Context, c *app.RequestContext)
+	CreateRoom(ctx context.Context, c *app.RequestContext)
+	JoinRoom(ctx context.Context, c *app.RequestContext)
+	Connect(ctx context.Context, c *app.RequestContext)
 }
 
-func NewChatService(cache *cache.Cache, log *logrus.Logger) IChatService {
-	s := &ChatService{
-		Cache: cache,
-		Log:   log,
-	}
-	return s
+func NewChatService(repo repo.IRepository, log *logrus.Logger) IChatService {
+	service := &ChatService{Repo: repo, Log: log, rooms: map[string]*roomState{}}
+	go service.cleanupExpiredRooms()
+	return service
 }

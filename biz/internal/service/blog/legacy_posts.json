@@ -1,0 +1,1429 @@
+[
+  {
+    "slug": "c36b98",
+    "legacyPermalink": "/pages/c36b98/",
+    "title": "基于QT使用C-开发下载器（1）——构思",
+    "description": "目前使用的IDM下载器，但是感觉界面不太符合个人习惯，而且是付费的，除非用破解版，因此想要开发自己的开源下载器。目前刚刚有一些简单想法，计划按照以下需求开发。如果有志同道合的朋友可以一起开发。",
+    "contentMarkdown": "目前使用的IDM下载器，但是感觉界面不太符合个人习惯，而且是付费的，除非用破解版，因此想要开发自己的开源下载器。目前刚刚有一些简单想法，计划按照以下需求开发。如果有志同道合的朋友可以一起开发。\n\n<!--more-->\n\n初级功能：\n\n+ 输入http网址能下载保存文件。\n+ 能进行一些简单的设置。（例如默认下载目录）\n\n中级功能：\n\n+ 支持断点续传功能。\n+ 支持多线程功能。\n+ 有一个简单的GUI。\n\n高级功能：\n\n+ 开发配套浏览器插件，支持相应浏览器下载请求。\n+ 有一个可高度自定义的GUI。\n+ 支持磁力链接、p2p功能。",
+    "categories": [
+      "项目",
+      "下载器"
+    ],
+    "tags": [
+      "QT",
+      "C++"
+    ],
+    "publishedAt": "2022-03-14 16:04:43",
+    "sourcePath": "03. 项目/01. 下载器/01. 基于QT使用C-开发下载器（1）——构思.md"
+  },
+  {
+    "slug": "372e29",
+    "legacyPermalink": "/pages/372e29/",
+    "title": "基于QT使用C-开发下载器（2）——界面设计与配置文件读取",
+    "description": "项目已经创建并开源在Github：链接",
+    "contentMarkdown": "项目已经创建并开源在Github：[链接](https://github.com/li1553770945/SheepDownloader)\n\n## 配置文件\n一开始想用jsoncpp来做，后来发现既然用了QT，QT为我们提供了很方便的Json操作方法，因此直接使用QT的Json相关类进行操作就可以了。\nConfig类\n共包含四个接口：\n```cpp\n\tQJsonValue Get(Qstring key);//获取key对应的配置\n\tint Set(Qstring key,Qstring value);//设置key对应的配置为value\n\tint Save();//保存当前配置到文件\n\tint Read();//读取配置文件\n```\n\n以上三个函数返回0表示操作成功，否则失败。\n\n### Read函数\n\n```cpp\n std::fstream _file;\n    _file.open(\"config.json\", std::ios::in);//检测是否存在；配置文件\n    if (_file)\n    {\n        _file.close();\n        QFile file(\"config.json\");\n        file.open(QIODevice::ReadOnly | QIODevice::Text);//打开文件\n        QString value = file.readAll();//读取\n        file.close();\n        QJsonParseError parseJsonErr;\n        QJsonDocument document = QJsonDocument::fromJson(value.toUtf8(), &parseJsonErr);\n        qDebug() << parseJsonErr.error;\n        if (!(parseJsonErr.error == QJsonParseError::NoError)) \n        {\n            QMessageBox box(QMessageBox::Critical, QString::fromLocal8Bit(\"错误.\"), QString::fromLocal8Bit(\"读取配置文件失败:\")+ QString::fromStdString(std::to_string(parseJsonErr.error)));\n            box.exec();\n            return false;\n        }\n        object = document.object();//将配置设置为根据配置文件构建的QJsonObject\n    }\n    return true;\n```\nRead函数在MainWindow的构造函数运行。\n### Save\n```cpp\n    QJsonDocument doc;\n    QJsonArray array;\n    array.append(object);\n\tdoc.setArray(array);\n    QByteArray data = doc.toJson();//也不知道为什么要这么复杂的操作\n\n    QFile file(\"config.json\");//json写入文件\n    file.open(QIODevice::WriteOnly);\n    file.write(data);\n    file.close();\n    return true;\n```\n\n### Get\n```cpp\nreturn object.value(key);\n```\n### Set\n```cpp\nobject.insert(key,value);\nreturn 0;\n```\n## 界面设计\n​\n![](https://pic1.zhimg.com/80/v2-a3815be7484614090535abfbd67f8294_720w.png?source=d16d100b)\n\n整体界面如上图所示。为了简洁，只保留一个输入框和下载按钮。下面左侧为下载文件列表，右侧为文件信息。\n点击选项-设置菜单打开设置窗口。",
+    "categories": [
+      "项目",
+      "下载器"
+    ],
+    "tags": [
+      "QT",
+      "C++"
+    ],
+    "publishedAt": "2022-03-14 21:41:20",
+    "sourcePath": "03. 项目/01. 下载器/02. 基于QT使用C-开发下载器（2）——界面设计与配置文件读取.md"
+  },
+  {
+    "slug": "436edd",
+    "legacyPermalink": "/pages/436edd/",
+    "title": "django3实现Websocket最简单demo",
+    "description": "本文着重讲过程和步骤，不着重原理。根据本文步骤可配出来最简单的一个demo。",
+    "contentMarkdown": "本文着重讲过程和步骤，不着重原理。根据本文步骤可配出来最简单的一个demo。\n\n## 1. 新建django项目\n\n## 2. 安装依赖\n\n首先运行 `pip install channels` 安装channels。然后在setttings.py的INSTALLED_APPS里添加channels。注意每个app后面加上逗号。\n\n## 3. 修改Asgi\n\n将asgi.py文件的内容更改为：(这是一个仅支持http的写法，方便后面测试，支持websocket的路由后面会给出）\n``` python\nimport os\n\nfrom channels.routing import ProtocolTypeRouter\nfrom django.core.asgi import get_asgi_application\n\nos.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mysite.settings')\n\napplication = ProtocolTypeRouter({\n    \"http\": get_asgi_application(),\n})\n```\n在settings.py中添加(myproject替换为你的project名称)\n`ASGI_APPLICATION = \"myproject.asgi.application\"`\n这个时候运行项目应该可以看到出现了：\n`Starting ASGI/Channels version 3.0.4 development server at http://127.0.0.1:8000/`\n\n## 4. 新建消费者（类似于views，负责接受连接、接收消息等操作）\n   \n新建APP，假设为'backend'。在backend目录新建consumers.py，填写代码为：（类名自定义，和下面的代码对应就行）\n\n``` python\nimport json\nfrom channels.generic.websocket import WebsocketConsumer\n\nclass ChatConsumer(WebsocketConsumer):\n    def connect(self):\n        self.accept()\n\n    def disconnect(self, close_code):\n        pass\n\n    def receive(self, text_data):\n        text_data_json = json.loads(text_data)\n        message = text_data_json['message']\n\n        self.send(text_data=json.dumps({\n            'message': message\n        }))\n```\n注意这种写法要求前端发送的消息为json，且消息内容放在`message` key下。即前端发送的消息为\n`{\"message\":\"消息内容\"}`，\n如果不是这样的格式修改receive函数即可。该文件负责定义websocket的连接、接收消息等操作。\n\n## 5. 修改路由\n新建routing.py，填写内容为：\n``` python\nfrom django.urls import re_path\n\nfrom . import consumers\n\nwebsocket_urlpatterns = [\n    re_path(r'ws/$', consumers.ChatConsumer.as_asgi()),\n]\n\n```\n然后修改我们的asgi为：\n\n``` python\nimport os\n\nfrom channels.auth import AuthMiddlewareStack\nfrom channels.routing import ProtocolTypeRouter, URLRouter\nfrom django.core.asgi import get_asgi_application\nimport backend.routing\n\nos.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"mysite.settings\")\n\napplication = ProtocolTypeRouter({\n  \"http\": get_asgi_application(),\n  \"websocket\": AuthMiddlewareStack(\n        URLRouter(\n            backend.routing.websocket_urlpatterns\n        )\n    ),\n})\n```\nOK，大功告成，此时后端的WebSocket就写好了，在配合一个前端就可以使用了。",
+    "categories": [
+      "语言",
+      "Pyhton"
+    ],
+    "tags": [
+      "Django",
+      "websocket"
+    ],
+    "publishedAt": "2022-03-14 21:42:46",
+    "sourcePath": "01. 语言/02. Python/01. Django/01. django3实现Websocket最简单demo.md"
+  },
+  {
+    "slug": "4b5f52",
+    "legacyPermalink": "/pages/4b5f52/",
+    "title": "01 说明",
+    "description": "该分类用于记录一些常用的操作，例如ubuntu换源，不用每次都去搜索各种镜像源等等。",
+    "contentMarkdown": "该分类用于记录一些常用的操作，例如ubuntu换源，不用每次都去搜索各种镜像源等等。\n\n<!-- more -->\n\n",
+    "categories": [
+      "常用操作"
+    ],
+    "tags": [
+      "常用操作"
+    ],
+    "publishedAt": "2022-03-14 22:28:06",
+    "sourcePath": "100. 常用操作/00. 说明.md"
+  },
+  {
+    "slug": "94d86e",
+    "legacyPermalink": "/pages/94d86e/",
+    "title": "ubuntu换源",
+    "description": "sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak",
+    "contentMarkdown": "### 0. 一键复制\n\n```\nsudo mv /etc/apt/sources.list /etc/apt/sources.list.bak\necho \"deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal main restricted universe multiverse \\\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-updates main restricted universe multiverse \\\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-backports main restricted universe multiverse \\\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-security main restricted universe multiverse\" | sudo tee /etc/apt/sources.list\nsudo apt-get update\n\n```\n### 1.备份原来的源，将以前的源备份一下，以防以后可以用的。\n\n`sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak`\n\n\n### 2.打开/etc/apt/sources.list文件，在前面添加如下条目，并保存。\n\n`sudo vim /etc/apt/sources.list`（\n可将vim更换为自己熟悉的编辑器）\n\n### 3.换源（任选其一）\n\n+ 添加阿里源\n\n```\ndeb http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ focal main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ focal-security main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ focal-updates main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ focal-proposed main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ focal-proposed main restricted universe multiverse\ndeb http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse\ndeb-src http://mirrors.aliyun.com/ubuntu/ focal-backports main restricted universe multiverse\n```\n\n+ 添加清华源\n  \n```\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal main restricted universe multiverse\n# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal main restricted universe multiverse\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-updates main restricted universe multiverse\n# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-updates main restricted universe multiverse\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-backports main restricted universe multiverse\n# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-backports main restricted universe multiverse\ndeb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-security main restricted universe multiverse\n# deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ focal-security main restricted universe multiverse multiverse\n\n```\n### 4.更新\n\n1. 更新源\n\n\n`sudo apt-get update`\n\n2. 如出现依赖问题，解决方式如下：\n\n`sudo apt-get -f install`\n\n3. 更新软件：\n\n`sudo apt-get upgrade`\n\n::: tip 原文链接\n[https://zhuanlan.zhihu.com/p/142014944](https://zhuanlan.zhihu.com/p/142014944)\n:::",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [
+      "ubuntu",
+      "换源"
+    ],
+    "publishedAt": "2022-03-14 23:28:34",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/01. ubuntu换源.md"
+  },
+  {
+    "slug": "d87dd0",
+    "legacyPermalink": "/pages/d87dd0/",
+    "title": "openwrt挂载ntfs只读",
+    "description": "Openwrt是基于Linux代码编写，只支持NTFS格式硬盘的只读权限，否则当挂载的NTFS硬盘写入超过2M左右，就会出现“error：read-only file system”的错误提示，意思为只读，不能写入。",
+    "contentMarkdown": "Openwrt是基于Linux代码编写，只支持NTFS格式硬盘的只读权限，否则当挂载的NTFS硬盘写入超过2M左右，就会出现“error：read-only file system”的错误提示，意思为只读，不能写入。\n\n解决方法有几种，一是用FAT32格式，这种格式是Windows系统和Linux系统都支持的，但该格式仅支持32GB的最大分区和4GB单个文件写入，极不方便，另也可以转换成Linux系统支持的EXT3格式，但该格式Windows不支持，需要安装其它软件才能识别，也不方便。所以，破解NTFS只权限是最好的解决方法。方法如下：\n\n1. 登录Openwrt后，进入系统——软件包，删除Installed packages下系统自带的kmod-fs-ntfs，前面有个删除，直接点就删除了。\n\n2. 打开Putty软件，SSH进入Openwrt系统，输入如下命令：\n\n`opkg update opkg install ntfs-3g reboot`\n\n等DB120重启后，就能在系统——软件包下看到NTFS-3G的软件了。再挂载NTFS硬盘下载电影，就不会出现错误提示了。\n\n以上2个步骤，缺一不可，否则无法安装NTFS-3G，这是要点！即使成功安装，就等于同时安装了NTFS、NTFS-3G ，但系统默认会使用NTFS只读挂载！！所以要先卸载NTFS，安装NTFS-3G ！！\n\n:::tip 原文链接\n123\n:::",
+    "categories": [
+      "常用操作",
+      "路由器"
+    ],
+    "tags": [
+      "openwrt",
+      "路由器"
+    ],
+    "publishedAt": "2022-03-15 21:38:24",
+    "sourcePath": "05. 教程/02. 物联网与路由器/03. openwrt挂载ntfs只读.md"
+  },
+  {
+    "slug": "45a3b8",
+    "legacyPermalink": "/pages/45a3b8/",
+    "title": "openwrt安装软件包到U盘",
+    "description": "df -h",
+    "contentMarkdown": "### 1. 接入U盘\n确认挂载\n\n`df -h`\n\n创建使用的目录\n\n`mkdir /mnt/sda1/openwrt`\n### 2. 修改/etc/opkg.conf\n`vim /etc/opkg.conf`\n\n```\ndest root /\ndest usb /mnt/sda1/openwrt        #添加的内容，指定路径\ndest ram /tmp\nlists_dir ext /var/opkg-lists\noption overlay_root /overlay\noption check_signature\n```\n### 3. 修改/etc/profile\n`vim /etc/profile`\n\n```\nexport LD_LIBRARY_PATH=\"/mnt/sda1/openwrt/usr/lib:/mnt/sda1/openwrt/lib\"                          #指定库文件\nexport PATH=\"/usr/sbin:/usr/bin:/sbin:/bin:/mnt/sda1/openwrt/usr/bin:/mnt/sda1/openwrt/usr/sbin\"  #可执行文件\nexport HOME=$(grep -e \"^${USER:-root}:\" /etc/passwd | cut -d \":\" -f 6)\nexport HOME=${HOME:-/root}                                    \nexport PS1='\\u@\\h:\\w\\$ '\n```\n### 4. 使配置生效\n\n`source /etc/profile  #立即生效`    \n\n或者\n\n`reboot #重启生效`                  \n\n（实测需要重启）\n\n::: tip 原文链接\n[https://blog.csdn.net/chouzhi7161/article/details/100749684](https://blog.csdn.net/chouzhi7161/article/details/100749684)\n\n:::",
+    "categories": [
+      "常用操作",
+      "路由器"
+    ],
+    "tags": [
+      "openwrt",
+      "路由器"
+    ],
+    "publishedAt": "2022-03-15 21:44:24",
+    "sourcePath": "05. 教程/02. 物联网与路由器/02. openwrt安装软件包到U盘.md"
+  },
+  {
+    "slug": "bb0c0d",
+    "legacyPermalink": "/pages/bb0c0d/",
+    "title": "服务器创建git仓库，部署自己的博客",
+    "description": "本文介绍如何在服务器上创建git仓库，并在本地克隆、同步等。",
+    "contentMarkdown": "本文介绍如何在服务器上创建git仓库，并在本地克隆、同步等。\n\n<!-- more -->\n\n为了方便部署博客，我需要在服务器搭建git仓库，这样以后每次都直接push就行了。如你所见，这篇博客就是我在部署博客的时候写的。\n\n## 1. 安装git\n运行`yum install git`安装git。我之前认为需要类似于服务器版的git，后来发现不需要，就是我们常用的那个git。\n\n## 2. 创建git用户和git用户组\n\n`groupadd git`  # 创建git 用户组\n\n`adduser git -g git`\n\n## 3. 禁止git登录\n\n这一步是为了让git用户只能使用git clone等命令，而不能用ssh登录服务器。\n\n修改`/etc/passwd`文件，将\n\n`git:x:1001:1001:,,,:/home/git:/bin/bash`\n\n修改为\n\n`git:x:1001:1001:,,,:/home/git:/usr/bin/git-shell`。\n\n## 4. 创建登录信息\n\n这一步是为了创建git使用的账号。\n```\nmkdir /home/git/.ssh $ chmod 700 /home/git/.ssh\n\ntouch 700 /home/git/.ssh/authorized_keys\n\nchmod 600 /home/git/.ssh/authorized_keys\n```\n注意以上命令不要用sudo创建，如果已经使用了，或者发现添加了公钥，登录还是要密码，可以使用\n`sudo chown -R git:git /home/git/.ssh/`来更改拥有者。\n在<mark>本地电脑</mark>运行`ssh-keygen -t rsa -C \"youremail@example.com\"`，会在用户目录下创建.ssh文件夹，将.ssh/id_rsa.pub文件里面的内容拷贝到`/home/git/.ssh/authorized_keys`。如果有多台电脑需要登录，则将每个电脑的公钥拷贝进去，一行一个。\n\n## 5. 初始化git仓库\n\n```\ncd /srv\n\nmkdir gitrepo\n\nchown git:git gitrepo/\n\ncd gitrepo\n\ngit init --bare blog.git\n\n# 我是为了搭建博客，你可以根据需要改成其他的名字，.git结尾只是一种规范，并非强制要求\n\nchown -R git:git project.git  #将仓库所属用户改为git \n```\n:::tip 关于`git init -bare`\n该命令可以生成一个“裸”git仓库，可以把该仓库用作远程仓库，可以正常push，但无法在该仓库直接进行git操作。如果不设置钩子，进入该文件夹也看不到提交的文件。一般作为服务端的git仓库都用该命令生成。\n:::\n\n## 6. 验证\n在<mark>本地</mark>运行\n`git clone git@服务器地址:/srv/gitrepo/blog.git`\n\n## 7. 设置存储路径\n\n这样的操作服务器已经可以当作git仓库用了，但是我们的文件在服务器上不可见，可以按照如下方法：\n可以在远程仓库的hooks目录下新建文件`post-receive`。\n内容为：\n```\n#!/bin/bash\ngit --work-tree=/home/www checkout -f\n```\n然后添加权限:\n\n`chown git:git post-receive`\n\n`chmod +x post-receive`\n\n其中的目录即为你要放置文件的路径。注意git用户需要有访问权限，不然会permition denied。\n\n## 遇到的问题\n\n### 1. error: refusing to update checked out branch: refs/heads/master\n让我看看是谁创建仓库的时候没有加`--bare`?\n\n\n\n:::tip 参考文章\n[https://www.cnblogs.com/shijiaoyun/p/9663396.html](https://www.cnblogs.com/shijiaoyun/p/9663396.html)\n[https://www.liaoxuefeng.com/wiki/896043488029600/899998870925664](https://www.liaoxuefeng.com/wiki/896043488029600/899998870925664)\n:::\n\n",
+    "categories": [
+      "常用操作",
+      "git"
+    ],
+    "tags": [
+      "git"
+    ],
+    "publishedAt": "2022-03-18 17:49:11",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/06. 服务器创建git仓库，部署自己的博客.md"
+  },
+  {
+    "slug": "79465d",
+    "legacyPermalink": "/pages/79465d/",
+    "title": "常见口红色号的RGB、16进制以及描述",
+    "description": "为了给女朋友挑选一支合适的口红，将常见口红色号的RGB、16进制以及描述记录下来。 部分色号RGB未找到官方说明，为自己定义。",
+    "contentMarkdown": "为了给女朋友挑选一支合适的口红，将常见口红色号的RGB、16进制以及描述记录下来。\n部分色号RGB未找到官方说明，为自己定义。\n\n\n<!-- more -->\n\n<table border=\"1\">\n<tr>\n<th>描述</th>\n<th>RGB</th>\n<th>16进制</th>\n<th>展示</th>\n<th>特点</th>\n<th>实例（点击放大）</th>\n</tr>\n\n<tr>\n<td>玫瑰红</td>\n<td>204,51,153</td>\n<td>#CC3399</td>\n<td style=\"background-color:#CC3399\"></td>\n<td>属于紫调，类似于紫红色，很抬气色，显得人成熟妩媚</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164235.png\"/></td>\n</tr>\n\n<tr>\n<td>西瓜红</td>\n<td>253,91,120</td>\n<td>#FD5B78</td>\n<td style=\"background-color:#FD5B78\"></td>\n<td>暖色系，色泽明艳亮丽，非常适合职场女性</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164301.png\" /></td>\n</tr>\n\n<tr>\n<td>西柚色</td>\n<td>201,96,109</td>\n<td>#C9606D</td>\n<td style=\"background-color:#C9606D\"></td>\n<td>红色偏粉，粉色偏橘的颜色，有点像粉橘色，水润富有光泽。显白，适合黄皮，素颜涂也很适合</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164310.png\" /></td>\n</tr>\n\n<tr>\n<td>暖橘色</td>\n<td>225,78,49</td>\n<td>#E14E31</td>\n<td style=\"background-color:#E14E31\"></td>\n<td>提亮肤色，气色显得红润</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164331.png\"/></td>\n</tr>\n\n<tr>\n<td>裸色（皮肤色）</td>\n<td>249,212,194</td>\n<td>#F9D4C2</td>\n<td style=\"background-color:#F9D4C2\"></td>\n<td>能显得嘴唇特别丰满，性感迷人，适合各种肤色人群日常使用</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164343.png\" /></td>\n</tr>\n\n<tr>\n<td>珊瑚色</td>\n<td>255,127,80</td>\n<td>#FF7F50</td>\n<td style=\"background-color:#FF7F50\"></td>\n<td>粉橘色的一种，是一种接近珊瑚的颜色，粉嫩的珊瑚色一向给人活泼可爱的感觉，十分受现代都市人的欢</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164353.png\" /></td>\n</tr>\n\n<tr>\n<td>豆沙色</td>\n<td>225,138,159</td>\n<td>#E18A9F</td>\n<td style=\"background-color:#E18A9F\"></td>\n<td>日常不化妆也能用的色号，提气色，黄皮也能显白，比较适合秋冬使用</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164411.png\" /></td>\n</tr>\n\n<tr>\n<td>吃土色</td>\n<td>132,85,65</td>\n<td>#845541</td>\n<td style=\"background-color:#845541\"></td>\n<td>一个接近棕色的颜色，相对来说并不怎么日常，欧美妆容用得比较多</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164449.png\" /></td>\n</tr>\n\n<tr>\n<td>正红色</td>\n<td>189,38,45</td>\n<td>#BD262D</td>\n<td style=\"background-color:#BD262D\"></td>\n<td>不怎么日常，通常比较正式的场合才用，非常显白，而且显气场。古装扮相也常用</td>\n<td><img src=\"https://img.peacesheep.xyz/20230309164508.png\" /></td>\n</tr>\n\n</table>\n\n## 参考文章\n[口红色号对照表](https://baijiahao.baidu.com/s?id=1716734293997294192&wfr=spider&for=pc)",
+    "categories": [
+      "生活"
+    ],
+    "tags": [
+      "生活",
+      "随笔"
+    ],
+    "publishedAt": "2022-03-19 21:07:19",
+    "sourcePath": "101. 生活/01. 口红色号.md"
+  },
+  {
+    "slug": "d4bd89",
+    "legacyPermalink": "/pages/d4bd89/",
+    "title": "Gin开发后端——gorm外键实例",
+    "description": "第一次接触Gin和Gorm，遇到了很多坑，分享出来让大家避免。",
+    "contentMarkdown": "第一次接触Gin和Gorm，遇到了很多坑，分享出来让大家避免。\n\n<!-- more -->\n## 说明\n\n有两个模型：User和Group。Group有一个Owner字段，Owner是指向User的外键。\n\n## model层结构体设计\n\n```Go\ntype UserModel struct {\n\tID         int    `json:\"id\" gorm:\"primary_key\"`\n\tUsername   string `gorm:\"unique_index\"`\n\tName       string `json:\"name\"`\n\tPassword   string `json:\"password\"`\n\tValidation string `json:\"-\"`\n\tStatus     int    `json:\"status\"`\n}\n```\n\n\n```Go\n\tID      int    `json:\"id\" gorm:\"primary_key\"`\n\tName    string `json:\"name\"`\n\tDesc    string `json:\"desc\"`\n\tOwnerID int\n\tOwner   UserModel `gorm:\"Foreignkey:OwnerID\"`\n```\n\nGroup中的OwnerID会成为数据库的owner_id字段，成为实际起作用的外键。而Owner属性是用于关联查询的，不会出现在数据库字段中。\n\n::: warning\n请注意，官方说明加上注释`gorm:\"Foreignkey:OwnerID\"`可以在AutoMigrate的时候自动添加外键，但是根据本人亲自实验，没有自动添加，后来发现是自己使用了V1版本的GORM，文档是V2版本的...\n:::\n\n在初始化数据库之后，使用`DB.Model(&models.GroupModel{}).AddForeignKey(\"owner_id\", \"user_models(id)\", \"CASCADE\", \"CASCADE\")`添加外键关联。\n\n该函数参数为：\n1. 数据库中需要创建外键的字段名（不是结构体中属性名）\n2. 外键关联的表(关联的字段)\n3. 删除的约束\n4. 更新的约束\n\n### model层中创建函数\n\n创建的过程中我们需要设置ownerID为需要指向的用户，但无需设置Owner属性，因为Owner属性是用于关联查询返回数据的。\n\n### model层查询函数\n\n需要注意的是直接使用`DB.Where(\"id = ?\", groupID).First(&group).Error`这样的查询方式，gorm是不会自动填充user的，需要使用`DB.Model(&group).Association(\"owner\").Find(&group.Owner)`，其中`owner`是结构体中的属性，因为里面已经指定了该属性为外键，且字段为`ownerid`。因此使用该函数查询之后，会自动根据外键关联查询出owner并填充到结构体中。\n\n",
+    "categories": [
+      "语言",
+      "Go"
+    ],
+    "tags": [
+      "null"
+    ],
+    "publishedAt": "2022-03-20 01:15:22",
+    "sourcePath": "01. 语言/03. Go/02. gin、gorm教程与踩坑/02. Gin开发后端——gorm外键实例.md"
+  },
+  {
+    "slug": "17c2a9",
+    "legacyPermalink": "/pages/17c2a9/",
+    "title": "Gin获取请求参数",
+    "description": "c.Query(\"key\")",
+    "contentMarkdown": "### 获取formdata：\n指使用html的form提交的数据。\n` c.PostForm(\"key\")`\n\n### 获取get参数：\n指类似于xxx.com?id=1这种。\n\n`c.Query(\"key\")`\n\n### 获取json参数\n\n前端使用VUE开发，发送POST、DELETE、PUT请求时都是使用JSON提交参数的，另外在<mark>部分情况下</mark>使用`c.Query()`也无法拿到Get参数，也需要使用解析JSON的方式解析。具体方法为：先使用\n\n```Go\njson := make(map[string]interface{}) \nc.BindJSON(&json)\n```\n转化为json，在使用`json['key']`获取参数，如果没有则为`nil`。\n\n::: tip\n一般GET请求不使用请求体传递参数，尽管这是完全可以做到的，但不推荐这样做\n:::",
+    "categories": [
+      "语言",
+      "Go"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-22 14:56:26",
+    "sourcePath": "01. 语言/03. Go/02. gin、gorm教程与踩坑/01. Gin获取请求参数.md"
+  },
+  {
+    "slug": "7938b0",
+    "legacyPermalink": "/pages/7938b0/",
+    "title": "班级作业管理系统——整体设计思路",
+    "description": "之前使用Django开发了班级作业网站管理系统，现在仍在使用中，后端请见HomeWork,感觉当初的设计有些不完善的地方，现在打算用Go进行重构。因为第一次接触Go，如果有不对的地方还希望批评指正。",
+    "contentMarkdown": "之前使用Django开发了班级作业网站管理系统，现在仍在使用中，后端请见[HomeWork](https://github.com/li1553770945/HomeWork),感觉当初的设计有些不完善的地方，现在打算用Go进行重构。因为第一次接触Go，如果有不对的地方还希望批评指正。\n\n<!-- more -->\n\n## 主要功能\n\n### 用户管理模块\n\n主要功能如下：\n\n+ 注册\n+ 登录\n+ 查看我的信息\n+ 登出\n+ 修改密码功能。\n\n### 小组管理模块\n\n+ 用户可以创建自己的小组\n+ 根据小组id和小组密码，加入一个小组\n+ 可以根据id查看一个小组的信息\n+ 可以查看自己创建的小组\n\n\n### 作业管理模块\n\n主要功能：\n+ 小组创建者可以给自己的小组成员发布作业\n+ 小组创建者可以查看作业的完成情况\n+ 小组创建者可以一键打包所有的作业\n+ 小组成员可以提交作业\n\n### 文件管理模块（可能有）\n\n该模块为专门的文件管理模块，在用户使用中不会感知到。\n\n## 约定\n+ 所有的API均以\"/api\"开头，下文所述路径均省略，例如\"login\"需要请求的路径为\"/api/login\"\n+ 所有API必定返回一个\"code\"字段，如果code不为0，则说明请求不成功，可以读取\"msg\"字段获取错误信息，如果返回成功，则数据包含在\"data\"字段（如有data）。下文所述“返回参数”均为data字段内容\n+ 所有API提交与返回数据均使用<mark>json</mark>格式。（包含get）\n+ 所有URL均不包含动词（登录注销除外），通过HTTP METHOD表示对资源的操作方式\n  \n## 全局code说明\n| code | 说明 |\n| --- | --- |\n| 0 | 请求成功 |\n| 4001 | 请求的参数有误（缺少必须参数等） |\n| 4002 | 请求的参数格式有误（参数格式错误，不符合限制条件等） |\n| 4003 | 没有权限进行操作 |\n| 4004 | 请求的资源不存在 |\n| 5001 | 服务器发生未知错误 |",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-22 15:01:42",
+    "sourcePath": "03. 项目/02. 作业网站管理/01. 班级作业管理系统——整体设计思路.md"
+  },
+  {
+    "slug": "f85e07",
+    "legacyPermalink": "/pages/f85e07/",
+    "title": "班级作业管理系统——API列表",
+    "description": "作业网站API列表 <!-- more -- login",
+    "contentMarkdown": "作业网站API列表\n<!-- more -->\n## login\n\n### 1. 登录功能\n+ 请求方式：POST\n+ 请求参数：\n  \n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|username|用户名| string |\n|password|密码| string |\n\n+ 返回参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|id|用户id|int|\n|username|用户名|string|\n|name|姓名|string|\n|email|电子邮件|string|\n|status|用户身份|int|\n|created_at|创建时间|time|\n|last_login|上次登录时间|time|\n\n\n## user\n### 1. 注册功能\n+ 请求方式：POST\n+ 请求参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|username|用户名|string|\n|student_no|学号|string|\n|password|密码|string|\n|name|用户姓名|string|\n|email|电子邮件|string|\n\n+ 返回参数\n\n无参数\n\n\n### 2. 查询我的信息\n+ 请求方式：GET\n+ 请求参数：\n  \n无参数\n\n+ 返回参数:\n\n同[login](#login)\n\n### 3. 修改我的信息功能\n+ 请求方式：PUT\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|用户姓名|string|\n|username|用户名|string|\n\n\n+ 返回参数:\n\n无参数\n\n## reset-password\n\n### 1. 重置密码功能\n\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|username|用户名|string|\n|validation|验证码(与管理员协商)|string|\n|password|新密码|string|\n\n\n+ 返回参数:\n\n无参数\n\n\n## logout\n\n### 1. 登出功能\n+ 请求方式：GET\n+ 请求参数：\n  无参数\n+ 返回参数：\n  无参数\n\n## group\n\n### 1. 增加一个小组\n\n+ 请求方式：POST\n+ 请求参数:\n  \n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|name|小组名| string |\n|password|小组加入密码| string |\n|desc|小组描述（选填）| string |\n|allowCreate|是否允许成员创建作业|bool|\n+ 返回参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|无名称，请直接读取data|创建的小组的ID|int|\n\n### 2. 删除一个小组\n\n+ 请求方式：DELETE\n+ 请求参数：\n\n| 参数 | 说明 |类型|\n| --- | --- | --- |\n|groupID|删除的小组的id|int|\n\n+ 返回参数： 无参数\n\n\n\n### 3. 查询一个小组(按照时间逆序，最新的在最前面)\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|groupID|查询的小组的id| int |\n\n+ 返回参数：\n  \n较为复杂，请见如下实例：\n\n```json\n{\n        \"id\": 3, //小组id\n        \"name\": \"test2\", //小组名称\n        \"desc\": \"testdesc\", //小组描述\n        \"CreatedAt\": \"2022-03-23T14:38:48.084+08:00\", //创建时间\n        \"OwnerID\": 1, // 创建者id\n        \"owner\": { \n            \"id\": 1, //创建者id\n            \"name\": \"test\", //创建者姓名\n        },\n        \"allowCreate\":true //   是否允许成员创建作业\n        \"members\": [//成员列表\n            {\n                \"id\": 1, //成员id\n                \"name\": \"test\", //成员名称\n            }\n        ]\n    }\n```\n::: warning\n您实际测试中可能发现还返回了<mark>文档之外</mark>的其他字段，但请<mark>不要使用他们</mark>，我们不保证这些字段有效，也不保证在后续仍然保留\n:::\n\n### 4. 修改小组\n\n   \n::: tip\n请求的时候url需要带上groupID=要更新的小组id\n:::\n\n+ 请求方式：PUT\n+ 请求参数：同新增小组，可以有缺少的参数\n+ 返回参数：无参数\n\n\n\n## group-created-num\n\n### 1. 查询自己创建小组的数量（用于分页等）\n+ 请求方式：GET\n+ 请求参数：无参数\n\n+ 返回参数：\n  \n|名称|说明|类型|\n| --- | --- | --- |\n| 无名称，请直接读取data | 创建的小组数量| int |\n\n\n## group-created\n\n### 1. 查询自己创建的小组(按照时间逆序，最新的在最前面)\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|start|起始位置|int|\n|end|结束位置|int|\n::: warning\n最多一次查询100条数据\n:::\n\n\n+ 返回参数：\n\n```json\n[ //返回值为一个小组列表\n        {\n            \"id\": 3,  //小组id\n            \"name\": \"test2\", //小组名称\n            \"desc\": \"testdesc\", //小组描述\n            \"CreatedAt\": \"2022-03-23T14:38:48.084+08:00\",//创建时间\n        },\n        {\n            \"id\": 5,\n            \"name\": \"test3\",\n            \"desc\": \"testdesc\",\n            \"CreatedAt\": \"2022-03-23T15:35:56.223+08:00\",\n        }\n    ]\n```\n\n## group-member\n\n### 1. 加入小组\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|groupID|加入的小组的id| int |\n|password|加入的小组的密码| string |\n\n+ 返回参数：无参数\n\n\n### 2. 退出小组\n+ 请求方式：DELETE\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|groupID|退出的小组的id| int |\n\n+ 返回参数：无参数\n\n\n## group-joined-num\n\n### 1. 查询自己加入的小组的数量（用于分页等）\n+ 请求方式：GET\n+ 请求参数：无参数\n\n+ 返回参数：\n  \n|名称|说明|类型|\n| --- | --- | --- |\n| 无名称，请直接读取data | 创建的小组数量| int |\n\n## group-joined\n\n### 1. 查询自己加入的小组功能(按照时间逆序，最新的在最前面)\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|start|起始位置|int|\n|end|结束位置|int|\n\n::: warning\n最多一次查询100条数据\n:::\n\n+ 返回参数：\n\n```json\n[//小组列表\n        {\n            \"id\": 3,//小组id\n            \"name\": \"test2\", //小组名称\n            \"desc\": \"testdesc\",//小组描述\n            \"CreatedAt\": \"2022-03-23T14:38:48.084+08:00\",//创建时间\n            \"OwnerID\": 1, //创建者id\n            \"owner\": {\n                \"id\": 1, // 创建者id\n                \"name\": \"test\", //创建者姓名\n            }\n        }\n    ]\n```\n\n## homework\n\n### 1. 添加作业\n\n+ 请求方式：POST\n+ 请求参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|name|作业名称|string|\n|desc|作业描述|string|\n|subject|作业所属科目|string|\n|endtime|作业截至时间|string，符合rfc3399标准|\n|canSubmitAfterEnd|结束后仍然可以提交|bool|\n|groupID|参加作业的小组|int|\n|type|提交类型|string|\n\n::: tip\nrfc3339标准实例：UTC+8时区的2022年3月27号，1:27:00表示为\"2022-03-27T01:27:00+08:00\"，详情[rfc3399](https://datatracker.ietf.org/doc/html/rfc3339)\n:::\n\n+ 返回参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|无名称，请直接读取data|创建的作业的ID|int|\n\n\n### 2. 查询作业\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|homeworkID|查询作业的ID|int|\n\n+ 返回参数：\n\n```json\n{\n        \"id\": 3,//作业id\n        \"name\": \"testwork\",//作业名称\n        \"desc\": \"test work desc\",//作业描述\n        \"subject\": \"test subject\",//所属科目\n        \"CreatedAt\": \"2022-03-27T00:11:45.728+08:00\",//创建时间\n        \"endtime\": \"0001-01-01T00:00:00Z\",//结束时间\n        \"CanSubmitAfterEnd\": false,//允许在结束后提交\n        \"GroupID\": 1,//参与小组id\n        \"type\":\"pdf\",//提交类型\n        \"owner\": {\n            \"id\": 1, //创建者id\n            \"name\": \"test\",//创建者姓名\n        }\n    }\n\n```\n  \n### 3. 删除作业\n\n+ 请求方式：DELETE\n+ 请求参数：\n  \n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|homeworkID|删除的作业的ID|int|\n\n+ 返回参数：无参数\n\n### 4. 修改作业\n\n   \n::: tip\n请求的时候url需要带上homeworkID=要更新的作业id\n:::\n\n+ 请求方式：PUT\n+ 请求参数：同新增作业，参与小组不可更改，可以有缺少的参数\n+ 返回参数：无参数\n\n## homework-created-num\n\n### 1. 查询自己创建的作业的数量（用于分页等）\n+ 请求方式：GET\n+ 请求参数：无参数\n\n+ 返回参数：\n  \n|名称|说明|类型|\n| --- | --- | --- |\n| 无名称，请直接读取data | 创建的小组数量| int |\n\n## homework-created\n\n### 1. 查询自己创建的作业(按照时间逆序，最新的在最前面)\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|start|起始位置|int|\n|end|结束位置|int|\n\n::: warning\n最多一次查询100条数据\n:::\n\n+ 返回参数：\n\n```json\n\n[ //创建的作业列表\n    {\n        \"id\": 3,//作业id\n        \"name\": \"testwork\",//作业名称\n        \"desc\": \"test work desc\",//作业描述\n        \"subject\": \"test subject\",//所属科目\n        \"CreatedAt\": \"2022-03-27T00:11:45.728+08:00\",//创建时间\n        \"endtime\": \"2022-03-27T15:00:00+08:00\",//结束时间\n        \"CanSubmitAfterEnd\": false,//允许在结束后提交\n        \"GroupID\": 1,//参与小组id\n    }\n]    \n\n```\n\n## submissions\n\n### 1. 查询单个作业的完成情况\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|homeworkID|要查询的作业的id|int|\n\n\n\n+ 返回参数：\n\n```json\n\n[ //提交列表\n        {\n            \"id\": 1, //提交id\n            \"CreatedAt\": \"2022-03-27T15:20:26.429+08:00\", //创建时间（非提交时间），指的是何时加入该作业\n            \"HomeworkID\": 18, //所属作业ID\n            \"owner\": {\n                \"id\": 1,//提交者ID\n                \"name\": \"test\", //提交者姓名\n            \n            },\n            \"FileName\": \"\", //提交的文件名\n            \"Finish\": false //是否已经完成\n        }\n]\n```\n## submission-file\n\n### 1. 下载提交的文件\n\n+ 请求方式：GET\n+ 请求参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|submissionID|要下载的提交id|int|\n|homeworkID|要下载的作业id|int|\n\n::: tip\n二者取其一即可，两者都填写时只有submission有效\n:::\n\n+ 返回参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|token|下载文件token|string|\n\n## homework-joined-num\n\n+ 请求方式：GET\n+ 请求参数：无参数\n\n+ 返回参数：\n  \n|名称|说明|类型|\n| --- | --- | --- |\n| 无名称，请直接读取data | 创建的小组数量| int |\n\n## homework-joined(按照时间逆序，最新的在最前面)\n\n1. 查询自己参加的作业\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|start|起始位置|int|\n|end|结束位置|int|\n\n::: warning\n最多一次查询100条数据\n:::\n\n+ 返回参数：\n\n```json\n[//加入的作业列表\n        {\n            \"CanSubmitAfterEnd\": true,\n            \"CreatedAt\": \"2022-03-27T15:20:26.295+08:00\",//创建时间\n            \"Desc\": \"test work desc\",//作业描述\n            \"EndTime\": \"2022-03-27T15:00:00+08:00\",//结束时间\n            \"Finished\": false,//是否已经完成\n            \"ID\": 18,//作业id\n            \"Name\": \"testwork\",//作业名称\n            \"Owner\": {\n                \"ID\": 1, //创建人ID\n                \"Name\": \"test\" //创建人姓名\n            },\n            \"Subject\": \"test subject\"//所属科目\n        }\n]\n```\n\n## homework-not-finished(按照<mark>截至时间</mark>逆序，最新的在最前面)\n\n1. 查询自己参加的还没有完成的作业\n+ 请求方式：GET\n+ 请求参数：同[homework-joined](#homework-joined)\n+ 返回参数：同[homework-joined](#homework-joined)\n\n\n## homework-not-finished-num\n\n1. 查询自己参加的还没有完成的作业的数量\n+ 请求方式：GET\n+ 请求参数：无参数\n+ 返回参数：\n\n|名称|说明|类型|\n| --- | --- | --- |\n| 无名称，请直接读取data | 未完成的作业的数量 | int |\n\n\n\n## submit?homeworkID=1\n\n1. 提交作业\n   \n::: tip\n请求的时候url需要带上homeworkID=要提交的作业id\n:::\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|file|提交的文件|file|\n\n\n\n+ 返回参数：无参数\n\n\n\n\n## export\n\n+ 请求方式：GET\n+ 请求参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|homeworkID|要导出的作业id|int|\n\n::: tip\n有关导出的说明，请参考[导出文件](/pages/d422b2/)\n:::\n+ 返回参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|done|是否打包完成|bool|\n|token|下载文件的token(只有在done为true时有效)|string|\n\n## download\n\n1. 下载文件\n   \n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|token|下载文件的token|string|\n\n+ 返回参数：\n\n直接返回二进制文件。\n\n## config\n\n1. 查询配置文件\n\n+ 请求方式：GET\n+ 请求参数：无参数，会根据登录用户的身份返回对应的配置文件\n+ 返回参数：\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|config|配置文件|string|\n\n\n2. 更新配置文件\n\n\n+ 请求方式：PUT\n+ 请求参数：\n  \n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|config|配置文件|string|\n\n+ 返回参数：无参数\n\n::: tip\n用户在注册的时候会自动创建空白的配置文件，因此不需要手动创建\n:::\n\n",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-25 21:59:11",
+    "sourcePath": "03. 项目/02. 作业网站管理/02. 班级作业管理系统——API列表.md"
+  },
+  {
+    "slug": "3a1268",
+    "legacyPermalink": "/pages/3a1268/",
+    "title": "班级作业管理系统——模型设计",
+    "description": "",
+    "contentMarkdown": "",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-25 22:00:30",
+    "sourcePath": "03. 项目/02. 作业网站管理/03. 班级作业管理系统——模型设计.md"
+  },
+  {
+    "slug": "d422b2",
+    "legacyPermalink": "/pages/d422b2/",
+    "title": "班级作业管理系统——导出功能设计",
+    "description": "打包线程：将请求的作业的所有提交文件打包，打包完成后，生成token，设置redis中该作业对应的token，且有效时间为3分钟，同时设置redis中token对应的文件的完整路径，有效时间为三分钟，方便下载。您可以使用轮询的方式，即每5秒请求一次export，直到done为true，则可以使用download下载文件。",
+    "contentMarkdown": "打包线程：将请求的作业的所有提交文件打包，打包完成后，生成token，设置redis中该作业对应的token，且有效时间为3分钟，同时设置redis中token对应的文件的完整路径，有效时间为三分钟，方便下载。您可以使用轮询的方式，即每5秒请求一次export，直到done为true，则可以使用download下载文件。\n\n![](https://img.peacesheep.xyz/20230309163008.png)\n\n\n\n",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-27 21:43:00",
+    "sourcePath": "03. 项目/02. 作业网站管理/04. 班级作业管理系统——导出功能设计.md"
+  },
+  {
+    "slug": "5e42fe",
+    "legacyPermalink": "/pages/5e42fe/",
+    "title": "班级作业管理系统——完结篇",
+    "description": "经历了一周的爆肝，终于将这次作业管理系统重构完成了。",
+    "contentMarkdown": "经历了一周的爆肝，终于将这次作业管理系统重构完成了。\n\n<!-- more -->\n\n## 重构总结\n\n### 1. 基于Go语言，实现快速部署\n不得不说，Go语言在后端方面确实比Python要好一点，后端这次写的比以前优雅了很多。各种ORM映射再也不用自己写了，直接使用Gin和Gorm完成。\n\n### 2. 分布式架构\n原来的系统一台服务器负责所有的功能。现在改为1后端主服务器+1 Mysql + 1主Redis+1备Redis架构，并发数从10提升到现在的几百。\n\n### 3. 全新设计导出功能\n使用redis设计了全新的导出功能，导出速度极大提升。具体请见[导出文件](/pages/d422b2/)。\n\n### 4. HTTPS\n使用HTTPS，让网站更加安全。\n\n### 5. 全新界面\n由@[kirigaya](https://xn--lbun88i.studio/home)设计的全新绚丽界面。",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-03-30 16:06:31",
+    "sourcePath": "03. 项目/02. 作业网站管理/05. 班级作业管理系统——完结篇.md"
+  },
+  {
+    "slug": "3c48c3",
+    "legacyPermalink": "/pages/3c48c3/",
+    "title": "Nginx多种配置样例，HTTPS配置与HTTP自动重定向",
+    "description": "这是一份NGINX的样例配置。可以直接参照这些样例进行配置。 <!-- more -- HTTPS,HTTP自动重定向",
+    "contentMarkdown": "这是一份NGINX的样例配置。可以直接参照这些样例进行配置。\n<!-- more -->\n## HTTPS,HTTP自动重定向\n\n```\n    server { # 该server表示80端口自动重定向\n        listen 80;\n        server_name _; # 根据需要替换你的server_name\n        rewrite ^(.*)$ https://$host$1 permanent;\n    }\n    server {\n        listen       443 default_server;  #监听443端口\n        listen       [::]:443 default_server;\n        server_name  _;\n        ssl on;\n        ssl_certificate  /root/card/XXX.pem;   #ssl证书的pem文件路径\n        ssl_certificate_key /root/card/XXX.key;  #ssl证书的key文件路径\n        include /etc/nginx/default.d/*.conf;\n        location / { # 静态文件\n            root /root/dist;\n            index index.html;\n            try_files $uri $uri/ /index.html; #解决VUE刷新404问题\n        }\n        location /socket{  # websocket\n            proxy_pass http://localhost:8000/socket;\n            proxy_connect_timeout 60s;\n            proxy_read_timeout 300s;\n            proxy_send_timeout 60s;\n            proxy_http_version 1.1;\n            proxy_set_header Upgrade $http_upgrade;\n            proxy_set_header Connection \"Upgrade\";\n            proxy_set_header Host $host;\n        }\n       \n        error_page 404 /404.html;\n            location = /40x.html {\n        }\n\n        error_page 500 502 503 504 /50x.html;\n            location = /50x.html {\n        }\n    }\n\n```\n\n## 静态文件\n\n```\nlocation / { # 静态文件\n    root /root/dist;\n    index index.html;\n    try_files $uri $uri/ /index.html; #解决VUE刷新404问题\n}\n```\n\n## 转发请求\n\n```\nlocation /api{\n    proxy_pass http://localhost:8001/api; # 表示后端重定向端口\n}\n```\n\n## 文件下载\n\n```\n location / {\n    autoindex on;\n    autoindex_exact_size off;\n    autoindex_localtime on; \n    charset utf-8; # 修复中文文件乱码问题\n}\n```\n\n使用这种方式会自动生成如下页面：\n\n![](https://img.peacesheep.xyz/20230309164040.png)\n\n## 大小相关\n\n### 设置最大请求体\n\n如果您的服务器有上传文件功能，且出现了413错误，有可能是请求体超过大小限制导致的，需要添加如下配置：\n\n```\nclient_max_body_size 8m;\n```\n\n## 超时设置\n\n### client_header_timeout\n\n语法 client_header_timeout time\n默认值 60s\n上下文 http server\n说明 指定等待client发送一个请求头的超时时间（例如：GET / HTTP/1.1）.仅当在一次read中，没有收到请求头，才会算成超时。如果在超时时间内，client没发送任何东西，nginx返回HTTP状态码408(“Request timed out”)\n\n### client_body_timeout \n\n语法 client_body_timeout time\n默认值 60s\n上下文 http server location\n说明 该指令设置请求体（request body）的读超时时间。仅当在一次readstep中，没有得到请求体，就会设为超时。超时后，nginx返回HTTP状态码408(“Request timed out”)\n\n### keepalive_timeout \n\n语法 keepalive_timeout timeout [ header_timeout ]\n默认值 75s\n上下文 http server location\n说明 第一个参数指定了与client的keep-alive连接超时时间。服务器将会在这个时间后关闭连接。可选的第二个参数指定了在响应头Keep-Alive: timeout=time中的time值。这个头能够让一些浏览器主动关闭连接，这样服务器就不必要去关闭连接了。没有这个参数，nginx不会发送Keep-Alive响应头（尽管并不是由这个头来决定连接是否“keep-alive”）\n两个参数的值可并不相同\n\n注意不同浏览器怎么处理“keep-alive”头：\n+ MSIE和Opera忽略掉\"Keep-Alive: timeout=< N >\" header.\n+ MSIE保持连接大约60-65秒，然后发送TCP RST\n+ Opera永久保持长连接\n+ Mozilla保持N+x(x为大概0-10的随机数)\n+ Konqueror保持长连接N秒\n  \n### lingering_timeout\n\n语法 lingering_timeout time\n默认值 5s\n上下文 http server location\n说明 lingering_close生效后，在关闭连接前，会检测是否有用户发送的数据到达服务器，如果超过lingering_timeout时间后还没有数据可读，就直接关闭连接；否则，必须在读取完连接缓冲区上的数据并丢弃掉后才会关闭连接。\n\n### resolver_timeout\n\n语法 resolver_timeout time \n默认值 30s\n上下文 http server location\n说明 该指令设置DNS解析超时时间\n\n### proxy_connect_timeout\n\n语法 proxy_connect_timeout time \n默认值 60s\n上下文 http server location\n说明 该指令设置与upstream server的连接超时时间，有必要记住，这个超时不能超过75秒。\n这个不是等待后端返回页面的时间，那是由proxy_read_timeout声明的。如果你的upstream服务器起来了，但是hanging住了（例如，没有足够的线程处理请求，所以把你的请求放到请求池里稍后处理），那么这个声明是没有用的，由于与upstream服务器的连接已经建立了。\n\n### proxy_read_timeout\n\n语法 proxy_read_timeout time \n默认值 60s\n上下文 http server location\n说明 该指令设置与代理服务器的读超时时间。它决定了nginx会等待多长时间来获得请求的响应。这个时间不是获得整个response的时间，而是两次reading操作的时间。\n\n### proxy_send_timeout\n\n语法 proxy_send_timeout time \n默认值 60s\n上下文 http server location\n说明 这个指定设置了发送请求给upstream服务器的超时时间。超时设置不是为了整个发送期间，而是在两次write操作期间。如果超时后，upstream没有收到新的数据，nginx会关闭连接\n\n### proxy_upstream_fail_timeout（fail_timeout）\n\n语法 server address [fail_timeout=30s]\n默认值 10s\n上下文 upstream\n说明 Upstream模块下 server指令的参数，设置了某一个upstream后端失败了指定次数（max_fails）后，该后端不可操作的时间，默认为10秒\n\n:::tip 参考资料\n[https://www.cnblogs.com/lemon-flm/p/8352194.html](https://www.cnblogs.com/lemon-flm/p/8352194.html)\n:::",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [
+      "nginx"
+    ],
+    "publishedAt": "2022-04-02 20:55:07",
+    "sourcePath": "100. 常用操作/02. 常用命令与配置文件/01. Nginx多种配置样例，HTTPS配置与HTTP自动重定向.md"
+  },
+  {
+    "slug": "c26dd1",
+    "legacyPermalink": "/pages/c26dd1/",
+    "title": "班级作业管理系统——使用说明书",
+    "description": "作业网站已经完成了开发和部署，这篇是使用说明书。另外该系统已经开源，如果有感兴趣的同学可以加入开发：后端，前端。",
+    "contentMarkdown": "作业网站已经完成了开发和部署，这篇是使用说明书。另外该系统已经开源，如果有感兴趣的同学可以加入开发：[后端](https://github.com/li1553770945/HomeWork)，[前端](https://gitee.com/li1553770945/home-work-fe)。\n\n\n\n\n<!-- more -->\n\n\n## 用户管理功能\n\n可以实现注册与登陆功能，注册的用户名请务必使用<mark>学号</mark>，姓名请填写自己的<mark>真实姓名</mark>，后续的所有操作都需要登陆才能进行。\n\n![](https://img.peacesheep.xyz/20230309163317.png)\n\n这两个按钮左边为登陆，右边为注册。\n\n## 小组管理功能\n\n作业的发布、收取等都是基于小组，类似于班级的作用。课代表或班长可以创建小组，将小组ID和密码告诉成员，他们可以加入小组。后续您可以给该小组整体布置作业。\n\n\n![](https://img.peacesheep.xyz/20230309163427.png)\n\n该图右侧按钮为加入小组功能。\n\n::: warning\n需要注意的是，发布作业仅针对当前成员，后续加入的成员是不能收到之前发布的作业的。\n:::\n\n## 作业管理功能\n\n小组的创建者可以给小组布置作业。发布作业可以设置发布时可以设置截止日期，以及能否在截止后继续提交，也可以设置提交的文件格式。作业创建者可以随时查看小组成员的提交情况，也可以下载他们上传的作业，能够一次性导出所有成员的提交（压缩包格式）。\n\n小组成员点击作业-我参与的即可查看自己参与的作业，可以提交对应的文件。如果已经提交，可以下载上次提交的文件。\n\n::: warning\n该系统为收作业使用，无法保证所有文件永久保存。请您不要作为稳妥的文件保管器，重要文件请您自行备份。\n:::\n\n\n## 常见问题\n\nQ:我可以提交多大的文件？\n\nA:目前后端设置的是128MB。\n\nQ:创建小组时的“允许组员创建作业”是什么意思？\n\nA:该项主要考虑的是：一个班级可能有不同的课代表，因此同一个小组可能需要复用，但是目前该功能还未开发完成，因此小组成员无法使用该小组发布作业。\n\n## 说明\n\n该作业系统快速开发完成，可能有BUG，如您使用中遇到问题，欢迎您联系作者或者直接在本页面留言，我们会尽快恢复。",
+    "categories": [
+      "项目",
+      "班级作业管理系统"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-04-07 20:48:38",
+    "sourcePath": "03. 项目/02. 作业网站管理/06. 班级作业管理系统——使用说明书.md"
+  },
+  {
+    "slug": "dfb373",
+    "legacyPermalink": "/pages/dfb373/",
+    "title": "tmux简明使用教程",
+    "description": "Github链接",
+    "contentMarkdown": "[Github链接](https://github.com/tmux/tmux)\n\ntmux是一个简单的终端复用软件。思考以下场景：我需要运行一个C++程序，还需要用pmap看一下这个程序的内存映射。当然，我们可以开两个终端，但这样显然不优雅。如果能在一个终端使用就好了。另外，如果我们远程连接到服务器，退出后再次连接就没有办法保存上次的一些内容，使用tmux可以解决这些问题。\n\n<!-- more -->\n\n## 原因\n\n因为自己用习惯了VSCode这样强大的现代工具，因此对于命令行的很多操作反而很生疏。看到老师上课演示全程用终端感觉还挺不错的，因此特意了解了一下tmux。\n\n## 安装\n\n试了一下很多系统自带了，我用的WSL，发行版是Ubuntu 20.04。如果没有的话ubuntu使用`sudo apt-get install tmux`就可以安装了。\n\n## 概念解释\n\n### session、window、pane\n\n⼀个tmux可以包含多个session，⼀个session可以包含多个window，⼀个window可以包含多个pane。\n\n+ session：会话\n+ window：窗⼝\n+ pane：⼩窗⼝\n\n每个pane都是⼀个交互对话框。\n\n![](https://img.peacesheep.xyz/20230309164051.png)\n\n## session管理\n\n::: tip\n在tmux中，许多操作需要⽤到前缀键Ctrl + B,下文所述“前缀”皆为此。\n:::\n\n### 创建⼀个session\n\n在终端中输⼊:`tmux`会新建⼀个session，其中包含⼀个window，window中包含⼀个pane，pane⾥打开了⼀个shell对话框。`tmux new -s <session-name>`可以创建一个名字为`<session-name>`的终端。\n\n### 挂起当前session\n\n要退出tmux，但⼜不想把session关掉，也就是不想把窗⼝关掉时按下前缀后⼿指松开，然后按D，此时已经从tmux中退出来，但是session是挂起的。\n\n### 查看所有挂起的session\n\n`tmux ls`\n\n### 打开之前挂起的session\n\n若想打开刚刚挂起的session\n```shell\n#  使用会话编号\ntmux attach -t 0\n\n# 使用会话名称\n tmux attach -t <session-name>\n```\n\n### 选择其他session\n\n按下前缀后⼿指松开，然后按S，会出现⼀个菜单列表，可以在⾥⾯使⽤⽅向键选择session。\n+ ⽅向键上：选择上⼀项\n+ ⽅向键下：选择下⼀项\n+ ⽅向键右：展开当前项\n+ ⽅向键左：闭合当前项\n  \n⽅向键上下选择哪个session，在每个session中，按下→，会展开，可以看见有多少个pane，再按⼀下→，就会把该window所有pane都展开；按下←，会合上。\n\n![](https://img.peacesheep.xyz/20230309164107.png)\n\n### 退出session\n\nCtrl + D 退出，关闭当前pane，如果当前window所有pane均关闭，则⾃动关闭window，若当前session的所有window均已关闭，则⾃动关闭session。若只有⼀个session，⼀个window，⼀个pane时，按下Ctrl + D则会直接退出session。\n\n## pane 管理\n\n### 水平拆分\n\n前缀+%，将当前pane左右平分成两个pane，并且可以继续分割。\n\n### 垂直拆分\n\n前缀+\"，将当前pane上下平分成两个pane。\n\n\n### 选中⼀个pane\n+ ⿏标操作：⿏标点击可以选pane（与使用的终端有关，部分终端例如WSL不可以）。\n+ 键盘操作：按下前缀后⼿指松开，然后按⽅向键：选择相邻的pane。\n\n### 调整分割线位置\n+ ⿏标操作：⿏标拖动pane之间的分割线，可以调整分割线的位置（与使用的终端有关，部分终端例如WSL不可以）。\n+ 键盘操作：按住前缀的<mark>同时</mark>按⽅向键，可以调整pane之间分割线的位置。\n\n### 全屏、取消全屏\n选中想要全屏的窗⼝后，按下前缀后⼿指松开，然后按Z，将当前pane全屏/取消全屏。\n\n\n\n\n### 翻阅当前pane内的内容\n按下前缀后⼿指松开，然后按PageUp/PageDown\n\n::: warning\n建议每个session只创建一个window，文中没有如何创建和选择window的操作。\n:::\n\n\n\n\n::: tip 参考资料\n[百度文库](https://wenku.baidu.com/view/8628c96ce75c3b3567ec102de2bd960590c6d93c.html)\n:::",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [
+      "tmux"
+    ],
+    "publishedAt": "2022-04-09 22:37:17",
+    "sourcePath": "05. 教程/06. 使用技巧/03. tmux简明使用教程.md"
+  },
+  {
+    "slug": "2946ae",
+    "legacyPermalink": "/pages/2946ae/",
+    "title": "setsockopt不起作用的解决方案",
+    "description": "帮助一位同学解决手动实现traceroute遇到了Windows socket使用setsockopt设置TTL无效的问题，原因很离奇，在这里记录一下。",
+    "contentMarkdown": "帮助一位同学解决手动实现traceroute遇到了Windows socket使用setsockopt设置TTL无效的问题，原因很离奇，在这里记录一下。\n\n<!-- more -->\n\n## 起因\n\n同学需要手动实现traceroute，即自己组ICMP数据包，发送出去，手动解析接受到的数据。\n\n## 问题\n\n每次都只能拿到一个回复，然后直接结束，wireshark抓包发现无论ttl设置为多少，实际发送的ttl都为0x80，这就解释了为什么只收到了一个回复，因为已经到目标地址了。\n\n## 解决过程\n\n\n设置ttl使用如下代码：\n\n```cpp\nresult = setsockopt(sock, IPPROTO_IP, IP_TTL, (char *)&ttl, sizeof(int));\n```\n\n无论ttl是多少，使用getsockopt获取到的ttl都是1，且实际发送的为0x80，且全称没有任何函数返回值非0。(即没有函数报错)。该代码使用Dev C++编写，编译器为`TDM-GCC 4.9.2`。将代码复制到Visual Studio编译，运行成功，符合预期，怀疑是编译器问题，进一步找到是链接器选项问题。\n\n## 解决方案\n\n将Dev c++链接器参数从`-lwsock32`改为`-lws2_32`，即可成功解决。\n\n",
+    "categories": [
+      "课程",
+      "网络"
+    ],
+    "tags": [
+      "网络"
+    ],
+    "publishedAt": "2022-04-23 21:50:46",
+    "sourcePath": "04. 课程/02. 网络/01.  setsockopt不起作用的解决方案.md"
+  },
+  {
+    "slug": "77032a",
+    "legacyPermalink": "/pages/77032a/",
+    "title": "riscv中断异常处理",
+    "description": "",
+    "contentMarkdown": "",
+    "categories": [
+      "竞赛",
+      "OS比赛"
+    ],
+    "tags": [
+      "OS",
+      "Riscv"
+    ],
+    "publishedAt": "2022-05-05 17:38:26",
+    "sourcePath": "02. 竞赛/01. OS比赛/01. riscv中断异常处理.md"
+  },
+  {
+    "slug": "292cb3",
+    "legacyPermalink": "/pages/292cb3/",
+    "title": "centos安装配置docker",
+    "description": "还以为要手动安装，很多步骤，特意写了博客...原来可以两行命令自动安装...",
+    "contentMarkdown": "还以为要手动安装，很多步骤，特意写了博客...原来可以两行命令自动安装...\n\n<!-- more -->\n## 安装docker\n\n`sudo yum install docker-ce docker-ce-cli containerd.io`\n\n\n如果出现`Error: Unable to find a match: docker-ce docker-ce-cli containerd.io`，是因为源的设置引起的，自带的源没有docker。\n\n可以先安装一些工具`yum install -y yum-utils device-mapper-persistent-data lvm2`, 然后就可以使用`yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo`添加阿里源了。\n\n## 安装docker-compose\n\n`pip3 install docker-compose`\n\n\n如果出现\"fatal error: pyconfig.h: No such file or directory\",则安装python-devel。`yum install python-devel`,如果找不到这个包，就搜索一下：`yum search python | grep -i devel`，找到类似的就是，比如我的TencentOS云服务器上，找到了`python3-devel.x86_64`，就可以安装了。\n\n\n如果出现\" ModuleNotFoundError: No module named 'setuptools_rust'\"，则使用`pip3 install -U pip setuptools\n--user`更新setuptools。\n\n## 换源\n创建或修改 /etc/docker/daemon.json文件为：\n```\n{\n    \"registry-mirrors\" : [\n    \"https://registry.docker-cn.com\",\n    \"http://hub-mirror.c.163.com\",\n    \"https://docker.mirrors.ustc.edu.cn\",\n    \"https://cr.console.aliyun.com\",\n    \"https://mirror.ccs.tencentyun.com\"\n  ]\n}\n```\n\n\n",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [
+      "docker"
+    ],
+    "publishedAt": "2022-05-09 20:30:45",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/03. centos安装配置docker.md"
+  },
+  {
+    "slug": "55b233",
+    "legacyPermalink": "/pages/55b233/",
+    "title": "WINDOWS读取磁盘扇区数据",
+    "description": "因为写自己的OS中需要写文件系统，为了方便先写了一个在windows上的版本，方便验证，后面在移植过去。github.com链接。",
+    "contentMarkdown": "因为写自己的OS中需要写文件系统，为了方便先写了一个在windows上的版本，方便验证，后面在移植过去。[github.com链接](https://github.com/li1553770945/FAT32FileSystem)。\n\n<!-- more -->\n\n主要是为了给我们的[PAL_OperatingSystem](https://github.com/li1553770945/PAL_OperatingSystem)用的，现在Windows上使用WindowsAPI读取FAT32扇区数据进行测试。里面很多抽象类是在我们的OS里面定义的，直接看可能会觉得没必要。",
+    "categories": [
+      "竞赛",
+      "OS比赛"
+    ],
+    "tags": [
+      "OS",
+      "C++",
+      "Windows",
+      "FAT32"
+    ],
+    "publishedAt": "2022-05-23 00:33:59",
+    "sourcePath": "02. 竞赛/01. OS比赛/02. WINDOWS读取磁盘扇区数据.md"
+  },
+  {
+    "slug": "37557f",
+    "legacyPermalink": "/pages/37557f/",
+    "title": "utf8与unicode互转（不依赖第三方库）",
+    "description": "out:输出的字符串",
+    "contentMarkdown": "## unicode 转utf8\n\nout:输出的字符串\n\nunicode[]:输入的unicode数组\n\nint_len：输入的unicode数组的长度\n\n返回值:编码成utf8后的长度\n\n```cpp\nUint64 UnicodeToUtf8(char* out, Uint32 unicode[], Uint32 int_len)\n\t{\n\t\tUint64 char_len = 0;\n\t\tfor (int i = 0; i < int_len; i++)\n\t\t{\n\t\t\tif (unicode[i] <= 0x7F) {\n\t\t\t\t// Plain ASCII\n\t\t\t\tout[char_len++] = (char)unicode[i];\n\t\t\t}\n\t\t\telse if (unicode[i] <= 0x07FF) {\n\t\t\t\t// 2-byte unicode\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 6) & 0x1F) | 0xC0);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 0) & 0x3F) | 0x80);\n\t\t\t}\n\t\t\telse if (unicode[i] <= 0xFFFF) {\n\t\t\t\t// 3-byte unicode\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 12) & 0x0F) | 0xE0);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 6) & 0x3F) | 0x80);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 0) & 0x3F) | 0x80);\n\t\t\t}\n\t\t\telse if (unicode[i] <= 0x10FFFF) {\n\t\t\t\t// 4-byte unicode\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 18) & 0x07) | 0xF0);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 12) & 0x3F) | 0x80);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 6) & 0x3F) | 0x80);\n\t\t\t\tout[char_len++] = (char)(((unicode[i] >> 0) & 0x3F) | 0x80);\n\t\t\t}\n\t\t\telse {\n\t\t\t\t// error \n\t\t\t\treturn 0;\n\t\t\t}\n\t\t}\n\t\tout[char_len] = 0;\n\t\treturn char_len;\n\t}\n```\n\n\n## utf8转unicode\n```cpp\nPAL_DS::Doublet<Uint32*, Uint32> Utf8ToUnicode(const char * name)\n\t{\n\n\t\tUint32* unicode = new Uint32[strLen(name)];\n\t\tUint32 unicode_len = 0;\n\t\tint read_pos = 0;\n\n\t\twhile(read_pos < strLen(name))\n\t\t{\n\t\t\t\n\t\t\tunsigned char mask = 1 << 7;\n\t\t\tint size = 0;\n\t\t\tfor (; size < 8; size++)\n\t\t\t{\n\n\t\t\t\tif ( (name[read_pos] & mask) == 0)\n\t\t\t\t{\n\t\t\t\t\tbreak;\n\t\t\t\t}\n\t\t\t\tmask >>= 1;\n\t\t\t}\n\t\t\n\t\t\tswitch (size)\n\t\t\t{\n\t\t\t\tcase 0:\n\t\t\t\t\tunicode[unicode_len] = (Uint32)name[read_pos];\n\t\t\t\t\tunicode_len++;\n\t\t\t\t\tread_pos++;\n\t\t\t\t\tbreak;\n\t\t\t\t//未完成\n\t\t\t\tdefault:\n\t\t\t\t\tcout << \"we have not support utf8 more than one size!\";\n\t\t\t\t\tbreak;\n\t\t\t}\n\n\n\t\t}\n\t\t\n\t\treturn PAL_DS::Doublet<Uint32*, Uint32>(unicode,unicode_len);\n\t}\n\n```",
+    "categories": [
+      "竞赛",
+      "OS比赛"
+    ],
+    "tags": [
+      "OS",
+      "C++"
+    ],
+    "publishedAt": "2022-06-02 00:07:56",
+    "sourcePath": "02. 竞赛/01. OS比赛/03. utf8与unicode互转.md"
+  },
+  {
+    "slug": "8a5c18",
+    "legacyPermalink": "/pages/8a5c18/",
+    "title": "Visual Studio莫名报链接器错误的BUG",
+    "description": "今天在写一个项目的时候，原本是一个有个文件header.h里面两个类的定义，有一个a.cpp文件，写了两个类的成员函数实现，没有问题。",
+    "contentMarkdown": "今天在写一个项目的时候，原本是一个有个文件header.h里面两个类的定义，有一个a.cpp文件，写了两个类的成员函数实现，没有问题。\n\n\n<!-- more -->\n\n我把其中一个类的实现单独放在一个b.cpp文件就不行了，检查了各种include，lib都是正常的。经过检查网上的各种方法都尝试了也不行，后来尝试把b.cpp这个文件删除了，再新建就又可以了。\n\n后来我想到是一开始新建的头文件b.h，然后重命名成了b.cpp。VS好像是会记录头文件和代码文件，如果一开始新建的是头文件，即便改成了cpp文件，也不会编译成obj文件，必须一开始就添加的源文件。",
+    "categories": [
+      "语言",
+      "C++"
+    ],
+    "tags": [
+      "C++",
+      "Visual Studio"
+    ],
+    "publishedAt": "2022-06-02 17:53:35",
+    "sourcePath": "01. 语言/01. C++/01. Visual Studio莫名报链接器错误的BUG.md"
+  },
+  {
+    "slug": "94888b",
+    "legacyPermalink": "/pages/94888b/",
+    "title": "C++实现发送SYN的端口扫描",
+    "description": "计网实验要求我们实现一个端口扫描器，可以扫描指定IP段的指定端口，写的过程中遇到了一些问题，在此记录一下。",
+    "contentMarkdown": "计网实验要求我们实现一个端口扫描器，可以扫描指定IP段的指定端口，写的过程中遇到了一些问题，在此记录一下。\n\n<!-- more -->\n\n## 端口扫描的三种方式\n\nTCP端口扫描有三种方法：\n\n1. 全TCP连接，这种方法使用三次握手与目标主机建立标准的tcp连接。但是这种方法跟容易被发现，被目标主机记录，而且效率较低。\n   \n2. SYN扫描，扫描主机自动向目标主机的指定端口发送SYN数据段，表示发送建立连接请求。如果目标主机的回应报文SYN=1，ACK=1.则说明该端口是活动的，接着扫描主机发送回一个RST给目标主机拒绝连接。导致三次握手失败。如果目标主机回应是RST则端口是“死的”。\n   \n3. FIN扫描，发送一个FIN=1的报文到一个关闭的窗口该报文将丢失并返回一个RST，如果该FIN报文发送到活动窗口则报文丢失，不会有任何反应。缺点是在部分OS上，表现可能不一样。\n\n综合考虑，我最终使用了第二种方法。\n\n## 介绍\n\n+ 运行环境：ubuntu 20.04验证正常，wsl1会失败\n+ github仓库地址：[https://github.com/li1553770945/SYNScan](https://github.com/li1553770945/SYNScan)\n\n## 步骤\n\n### 创建socket\n\n```cpp\nint sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);\nint on = 1; \nint opt =  setsockopt(sock,IPPROTO_IP,IP_HDRINCL,&on,sizeof(on));\nif(sock < 0)\n{\n  cout<<\"sock:\"<<sock<<\" errno:\"<<errno<<\" desc:\"<<strerror(errno)<<endl;\n  return;\n}\n```\n\n让我没想到的是，创建socket就成了我的第一个问题。有的人说应该用IPPROTO_TCP，有的人说应该用IPPROTO_RAW。最后经过测试发现，这个与平台有关，在windows上不支持SOCK_RAW, IPPROTO_TCP这样的组合方式。后面的setsockopt是为了让OS不要自动填充ip头。\n\n\n\n### 发送\n\n```cpp\n\nstatic int  seq = 1;\nsockaddr_in dst_ip = { 0 };\nmemset(&dst_ip,0,sizeof(dst_ip));\ndst_ip.sin_family = AF_INET;\ndst_ip.sin_addr.s_addr = inet_addr(IpToString(ip).data());\ndst_ip.sin_port = htons(port);\n\nint re = sendto(\n    sock,\n    buffer,\n    sizeof(buffer),\n    0,\n    (sockaddr*)&dst_ip,\n    sizeof(dst_ip)\n);\n\n```\n发送和接收的代码都想对简单，这里不是完整代码，完整代码请见我的github。\n\n::: warning\nwsl1不知道抽什么风，以上代码在wsl1上会出现invalid arguments，当时调了半天...\n:::\n\n### 接收\n\n```cpp\n while(recving)\n  { \n    int re = recvfrom(sock, (char*)buffer, sizeof(buffer), 0,\n    &addr, (socklen_t*)&size);\n    if(ip_ptr->ip_dst.s_addr != inet_addr(my_ip))//不是发给自己的或者是127.0.0.1\n    {\n        continue;\n    }\n    if(ips.find(htonl(ip_ptr->ip_src.s_addr)) == ips.end())//不是要ping的ip\n    {\n        continue;\n    }\n    \n    if(tcp_ptr->syn&&tcp_ptr->ack)\n    {\n        //cout<<IpToString(htonl(ip_ptr->ip_src.s_addr))<<\":\"<<htons(tcp_ptr->source)<<\"->\"<<IpToString(htonl(ip_ptr->ip_dst.s_addr))<<\":\"<<htons(tcp_ptr->dest)<<endl;\n        //cout<<\"tcp.syn:\"<<tcp_ptr->syn<<\" tcp.ack:\"<<tcp_ptr->ack<<\" tcp.rst:\"<<tcp_ptr->rst<<endl;\n        mtx.lock();\n        result[htonl(ip_ptr->ip_src.s_addr)].insert(htons(tcp_ptr->source));\n        mtx.unlock();\n    }\n    // sleep(5);\n}\n```\n\n由于接收是同步操作，而且recvfrom会把所有的符合条件的包都接收，不针对特定ip，因此我们只需要全局开一个接收线程即可。\n\n## 遇到的问题\n\n### wsl1下无法发送数据\n\n这个问题很坑，我用的ubuntu18.04的发行版，但是不行，和真正的ubuntu18.04表现不一样。\n\n### 大小端问题\n\n注意发送的数据中ip和端口都是要经过htonl或htons转换的。\n",
+    "categories": [
+      "课程",
+      "网络"
+    ],
+    "tags": [
+      "C++",
+      "Ping"
+    ],
+    "publishedAt": "2022-06-07 00:17:54",
+    "sourcePath": "04. 课程/02. 网络/02. C++实现发送SYN的端口扫描.md"
+  },
+  {
+    "slug": "1c959d",
+    "legacyPermalink": "/pages/1c959d/",
+    "title": "简历管理系统——API列表",
+    "description": "数据库作业简历管理网站API列表 <!-- more -- login",
+    "contentMarkdown": "数据库作业简历管理网站API列表\n<!-- more -->\n## login\n\n### 1. 登录功能\n+ 请求方式：POST\n+ 请求参数：\n  \n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|username|学号| string |\n|password|密码| string |\n\n+ 返回参数\n\n| 参数 | 说明 | 类型 |\n| --- | --- | --- |\n|id|用户id|int|\n|username|学号|string|\n|name|姓名|string|\n|email|电子邮件|string|\n|status|用户身份（1表示学生，2表示管理员）|int|\n|created_at|创建时间|string,符合rfc3399标准|\n|last_login|上次登录时间|string,符合rfc3399标准|\n\n\n## user\n### 1. 注册功能\n+ 请求方式：POST\n+ 请求参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|username|学号|string|\n|password|密码|string|\n|email|电子邮件|string|\n|name|用户姓名|string|\n\n\n+ 返回参数\n\n无参数\n\n\n### 2. 查询我的信息\n\n+ 请求方式：GET\n+ 请求参数：\n  \n无参数\n\n+ 返回参数:\n\n同[login](#login)\n\n### 3. 修改我的信息功能\n+ 请求方式：PUT\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|用户姓名|string|\n|email|电子邮件地址|string|\n\n可以有空缺的参数。\n\n\n+ 返回参数:\n\n无参数\n\n## reset-password(暂定，先不要写实现，后面没时间就算了)\n\n### 1. 重置密码功能\n\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|username|学号|string|\n|validation|验证码(向管理员请求)|string|\n|password|新密码|string|\n\n\n+ 返回参数:\n\n无参数\n\n\n## logout\n\n### 1. 登出功能\n+ 请求方式：GET\n+ 请求参数：\n  无参数\n+ 返回参数：\n  无参数\n\n## reward\n\n### 1. 创建获奖记录\n\n+ 请求方式：POST\n+ 请求参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|获奖名称|string|\n|rank|获奖等第（可选）|string|\n|host|主办方（可选）|string|\n|date|获奖日期|string|\n\n+ 返回参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|创建的获奖记录id|int|\n\n### 2. 删除获奖记录\n\n+ 请求方式：DELETE\n+ 请求参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|要删除的获奖记录id|int|\n\n<mark>id放在url中</mark>\n\n+ 返回参数：\n\n无参数\n\n### 3. 查询获奖记录\n\n+ 请求方式：GET\n+ 请求参数：\n  \n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|要查询的获奖记录id|int|\n\n+ 返回参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|获奖名称|string|\n|rank|获奖等第|string|\n|host|主办方|string|\n|date|获奖日期|string|\n|file|证书文件路径|如果为空字符串，则没有上传文件|string|\n\n### 4. 更新获奖记录\n\n+ 请求方式：PUT\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|要更新的获奖记录id|int|\n\n<mark>id放在url中</mark>\n\n\n其他参数同创建，可以有空缺的参数\n\n+ 返回参数：\n  无参数\n\n## upload-reward\n\n### 1. 上传证书文件功能\n\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|获奖记录id|int|\n|file|获奖记录文件|bytes|\n\n<mark>id放在url中</mark>\n\n+ 返回参数：\n\n无参数\n\n## download-reward\n\n### 1. 下载证书文件功能\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|获奖记录id|int|\n\n+ 返回参数：\n\n无参数，直接返回二进制文件\n\n## my-reward\n\n### 1. 查询我的获奖记录列表\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|start|起始位置|int|\n|end|结束位置|int|\n\n+ 返回参数：\n\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|totalNum|上传的获奖记录的个数|int|\n|items|获奖列表|list|\n|- id|获奖id|int|\n|- name|奖项名称|string|\n|- created_at|上传时间|string,符合rfc3399标准|\n\n## resume\n\n### 1. 创建一份简历\n\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|简历名称|string|\n|target|投递意向|string|\n\n+ 返回参数：\n\n无参数\n\n\n### 2. 删除一份简历\n\n+ 请求方式：DELETE\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|简历id|int|\n\n<mark>id放在url中</mark>\n\n+ 返回参数：\n\n无参数\n\n### 3. 查询一份简历\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|简历id|int|\n\n+ 返回参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|name|简历名称|string|\n|target|投递意向|string|\n|file|简历文件路径，如果为空字符串，则没有上传文件|string|\n\n\n### 4. 更改一份简历\n\n+ 请求方式：PUT\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|简历id|int|\n\n<mark>id放在url中</mark>\n\n其他参数同创建简历，可有空缺参数\n\n+ 返回参数：\n\n无参数\n\n## my-resume\n\n### 1. 查询我的简历\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|start|起始位置|int|\n|end|结束位置|int|\n\n+ 返回参数：\n\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|totalNum|上传的简历的个数|int|\n|items|简历列表|list|\n|- id|简历id|int|\n|- name|简历名称|string|\n|- name|上传时间|string,符合rfc3399标准|\n\n\n## upload-resume\n\n### 1. 上传简历文件功能\n\n+ 请求方式：POST\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|简历id|int|\n|file|简历文件|bytes|\n\n<mark>id放在url中</mark>\n\n+ 返回参数：\n\n无参数\n\n## download-resume\n\n### 1. 下载简历文件功能\n\n+ 请求方式：GET\n+ 请求参数：\n\n| 参数 | 说明 | 类型|\n| --- | --- |---|\n|id|简历id|int|\n\n+ 返回参数：\n\n无参数，直接返回二进制文件\n\n",
+    "categories": [
+      "课程",
+      "数据库"
+    ],
+    "tags": [
+      "Go"
+    ],
+    "publishedAt": "2022-06-08 19:55:44",
+    "sourcePath": "04. 课程/03. 数据库/01. 简历管理系统——API列表.md"
+  },
+  {
+    "slug": "fe9989",
+    "legacyPermalink": "/pages/fe9989/",
+    "title": "AIRSIM安装与Demo运行",
+    "description": "虚幻引擎很早就想完了，正好借着这次课程实验学习一下。",
+    "contentMarkdown": "虚幻引擎很早就想完了，正好借着这次课程实验学习一下。\n\n<!-- more -->\n\n## 概述\n\n这次的多智能体实验需要我们使用AirSim模拟器，运行一个多无人机的控制算法，在模拟器中实时预览我们的控制算法。学长已经给了一个demo，我们在此基础上修改就可以，无需从头去自己写多无人机控制算法。\n\n## 环境安装\n\n官方的安装教程见：[https://microsoft.github.io/AirSim/build_windows/](https://microsoft.github.io/AirSim/build_windows/)。参照官方教程和学长给的Word，很容易就可以装好。\n\n### 1.\t安装虚幻引擎\n\n电脑重装系统之后一直都没有安装Epic，这次正好有理由安装了。首先安装EpicGames。点击左边虚幻引擎，根据官方说明，需要安装4.27及以上版本，由于5.0.2版本太大而且怕兼容性不好，因此直接安装4.27。安装完成后界面如图所示：\n![](https://img.peacesheep.xyz/20230309163514.png)\n### 2.下载VS2022\n由于我之前使用的是VS2019，官方要求使用VS2022，为了避免出现问题，所以选择了卸载2019安装2022。\n需要注意的是安装时需要勾选Windows SDK以及最新的.NET Framework SDK。\n\n![](https://img.peacesheep.xyz/20230309163526.png)\n![](https://img.peacesheep.xyz/20230309163542.png)\n### 3. 克隆项目\n\n使用`git clone https://github.com/Microsoft/AirSim.git`克隆整个项目。\n\n### 4. 安装AirSim\n\n打开`Developer Command Prompt for VS 2022`，运行`build.cmd`。等一会就直接OK了。\n\n### 5. 安装python airsim库\n\n直接用`pip install airsim`会报错，是由于一些库的版本依赖冲突引起的，根据报错很快就能解决。\n\n### 遇到的问题：\n\n这个问题就是学长提到的，由于我一开始没有进行这个步骤，就报错了。\n\n#### 问题\nGet-ItemProperty: Cannot find path 'HKEY_CLASSES_ROOT\\Unreal.ProjectFile\\shell\\rungenproj' because it does not exist.\n#### 解决方案：\n先将Epic Games launcher 退出，然后重新打开Epic launcher, 然后会自动跳出 fix of associate project 的选项。\n\n## 关键代码\n\n代码基本上就是学长的，只做了一些简单的修改。\n\n起飞：\n```python\n    for i in range(9):\n        name = \"UAV\"+str(i+1)\n        client.enableApiControl(True, name)     # 开启Api控制UAVi\n        client.armDisarm(True, name)            # 解锁螺旋桨\n        if i != 8:                              # 起飞\n            client.takeoffAsync(vehicle_name=name)\n        else:\n            client.takeoffAsync(vehicle_name=name).join()\n            # Async methods returns Future.\n            # Call join() to wait for task to complete.\n\n    for i in range(9):                           # 全部都飞到同一高度层3m\n        name = \"UAV\" + str(i + 1)\n        if i != 8:\n            client.moveToZAsync(-30, 5, vehicle_name=name)\n            # moveToZAsync(z, velocity, vehicle_name)\n            # 是高度控制 API，第一个参数是高度，第二个参数是速度，第三个是控制的目标\n        else:\n            client.moveToZAsync(-30, 5, vehicle_name=name).join()    # .join()\n```\n\n飞往目标地点：\n```python\n for t in range(50):\n        for i in range(9):   # 计算每个无人机的速度指令\n            name_i = \"UAV\"+str(i+1)\n            pos_i = get_UAV_pos(client, vehicle_name=name_i) # 拿到无人机的位置\n            r_mig = pos_mig - pos_i\n            v_mig = k_mig * r_mig / np.linalg.norm(r_mig)\n            v_sep = np.zeros([2, 1])\n            v_coh = np.zeros([2, 1])\n            N_i = 0\n            for j in range(9):\n                if j != i:\n                    N_i += 1\n                    name_j = \"UAV\"+str(j+1)\n                    pos_j = get_UAV_pos(client, vehicle_name=name_j)\n                    if np.linalg.norm(pos_j - pos_i) < r_max:\n                        r_ij = pos_j - pos_i\n                        v_sep += -k_sep * r_ij / np.linalg.norm(r_ij)\n                        v_coh += k_coh * r_ij\n            v_sep = v_sep / N_i\n            v_coh = v_coh / N_i\n            v_cmd[:, i:i+1] = v_sep + v_coh + v_mig\n\n        for i in range(9):   # 每个无人机的速度指令执行\n            name_i = \"UAV\"+str(i+1)\n            client.moveByVelocityZAsync(v_cmd[0, i], v_cmd[1, i], -30, 0.1, vehicle_name=name_i)\n            #  client.moveByVelocityZAsync(vx, vy, z, duration,\n            #  drivetrain = DrivetrainType.MaxDegreeOfFreedom, yaw_mode = YawMode(), vehicle_name = '')\n            # (x轴速度,Y轴速度，Z轴，时长，控制对象) ，水平速度控制（指定高度）\n```\n\n降落：\n```python\n    client.simPause(False)  # Pauses simulation\n    for i in range(9):\n        name = \"UAV\"+str(i+1)\n        if i != 8:                                              # 降落\n            client.landAsync(vehicle_name=name)\n        else:\n            client.landAsync(vehicle_name=name).join()\n    for i in range(9):\n        name = \"UAV\" + str(i + 1)\n        client.armDisarm(False, vehicle_name=name)              # 锁定，关闭螺旋桨\n        client.enableApiControl(False, vehicle_name=name)       # 释放控制权\n```\n\n## 效果与总结\n\n### 流程演示\n\n初始状态：\n\n![](https://img.peacesheep.xyz/20230309163604.png)\n\n起飞：\n\n由于我是用的是AirSim默认场景Blocks，里面有很多立方体，使用学长给的代码起飞直接撞墙...所以我将我人机的高度调高了一些。\n\n![](https://img.peacesheep.xyz/20230309163614.png)\n\n飞行途中：\n\n![](https://img.peacesheep.xyz/20230309163626.png)\n\n到达终点：\n\n![](https://img.peacesheep.xyz/20230309163644.png)\n\n降落：\n\n由于没有调整降落时的位置，导致一部分无人机降落直接降落在立方体上了。\n\n![](https://img.peacesheep.xyz/20230309163654.png)\n结束：\n\n可以看到由一架无人机降落到了地上，其他的降落到立方体上了。\n\n![](https://img.peacesheep.xyz/20230309163705.png)\n\n\n### 总结\n\n虚幻引擎很早就想玩了，但是一直没有机会，这次终于玩了一次。这次实验让我学会了使用AirSim进行多无人机控制的全部流程。\n\n虽然安装的过程中遇到了一些小问题，但是有学长给的文档很清楚，所有问题都解决了。运行的时候感觉自己显卡不太够，有很明显的卡顿。\n\n我之前总以为控制无人机是一件很麻烦的事，今天才知道原来只用python几行代码就行，模拟器把很多东西都帮我们做了，我们不用自己制作无人机的3D模型，也不用自己写碰撞的反弹这种物理效果。我们只需要计算一下无人机的坐标，速度，然后直接调用API就可以了。\n\n控制算法这块学长写的理论非常清楚，一开始有一点不太理解，但是代码非常非常清楚，直接看代码就能看懂了。由于我使用的场景有很多障碍勿，看着学长的注释很快就能把路径重新调整好。\n\n由于我之前没有研究过这个方向，所以没办法用自己代码，只能简单调整学长的代码，也算是有点遗憾了。以后想要多做一些类似的研究，如果能用自己的无人机集群算法应该会很好玩。",
+    "categories": [
+      "课程",
+      "多智能体控制"
+    ],
+    "tags": [
+      "课程",
+      "多智能体控制"
+    ],
+    "publishedAt": "2022-06-18 17:22:49",
+    "sourcePath": "04. 课程/01. 多智能体控制/01. AIRSIM安装与Demo运行.md"
+  },
+  {
+    "slug": "046b78",
+    "legacyPermalink": "/pages/046b78/",
+    "title": "k8s介绍及安装教程",
+    "description": "第一次看k8s，看了一会终于把一些简单概念懂了，然后开始安装，又遇到了一些麻烦。",
+    "contentMarkdown": "第一次看k8s，看了一会终于把一些简单概念懂了，然后开始安装，又遇到了一些麻烦。\n\n刚开始学k8s的我：minikube是什么？kubeadm是什么？就不能一键`yum install k8s`么？\n为了解决这些问题，我写了一篇博客记录下来。本人也是初学者，以下内容可能有错误的，如果有问题欢迎在评论区指出，我也会及时的更新自己发现的错误。\n\n<!-- more -->\n\n前排提示：文章较长，我从一个完全不知道k8s到了解了相关的概念到运行第一个demo到写完这篇文章用了一整天时间，需要耐心一点一点看。\n\n## 一些我自己的问题\n### k8s与kubectl、kubeadm、kubelet的关系是什么？\n\nkubelet：运行在Cluster所有节点上，负责启动Pod和容器。\n\nkubeadm：用于初始化Cluster。\n\nkubectl: 是Kubernetes命令行工具。通过kubectl可以部署和管理应用，查看各种资源，创建、删除和更新各种组件。\n\n\n举一个也许不太恰当但可以帮助理解的例子：kubeadm是一个工人，他负责工作(启动Pod和容器)；kubeadm是HR，负责告诉工人你是一个后台开发还是一个美工（是master还是slave），kubectl则是工人的上次，负责告诉工人你现在要把这个系统上线或者关闭（kubectl可以通过API查看各种资源，创建、删除和更新各种组件）。\n\n### 安装是否要区分master和slave？\n\n不区分。安装过程是一样的，都需要<mark>kubectl、kubeadm、kubelet三大组件</mark>，但是一些配置文件可能会不一样。\n\n### minikube是什么?\n\n像我刚刚说的那种工作模式，kubectl、kubeadm、kubelet三大组件像是一个完整的公司，而minikube就像一个小公司，他不区分master和slave节点，可以帮助新手更好的了解k8s的工作原理、工作模式以及相关概念，以及进行一些测试等，但不建议用于生产环境。\n\n\n## 环境准备\n\n在所有机器都要进行如下操作：\n\n### 修改主机名\n\n```bash\nsudo vim /etc/hostname \n```\n主机修改成`k8smaster`。其他的修改成`k8snode1`、`k8snode2`这样。\n\n\n这里的目的是更加方便的看到节点。比如如果不改你看到的所有node都是localhost.localdomain，不知道谁是谁。\n\n### 修改host文件\n\n```bash\nsudo vim /etc/hosts\n```\n添加类似于如下信息：\n\n![](https://img.peacesheep.xyz/20230309163731.png)\n\n这里的目的也是更加方便。比如你想看能否ping通某个节点可以`ping node1`，而不必输入ip。\n\n\n\n### 关闭防火墙\n\n\n```bash\nfirewall-cmd --state          # 查看防火墙状态\n \nsystemctl stop firewalld      # 停止防火墙的服务\n \nsystemctl disable firewalld   # 禁止开机启动\n```\n\n### 关闭selinux\n\n编辑文件，修改SELINUX的值为disable\n\n```bash\nsudo vim /etc/sysconfig/selinux\n```\n找到“SELINUX”这一行改成“SELINUX=disabled”。\n\n![](https://img.peacesheep.xyz/20230309163809.png)\n\n### 关闭swap（k8s禁止虚拟内存以提高性能）\n\n```bash\nsudo swapoff -a && sudo sed -i '/ swap / s/^\\(.*\\)$/#\\1/g' /etc/fstab\n```\n\n### 时间同步\n\n```bash\nsudo yum install ntpdate -y\n\nsudo ntpdate time.windows.com\n```\n\n我这里运行失败了，但这个应该是可选的。\n\n### 配置yun源\n\n+ 给各个节点配置上阿里的Base源。\n```bash\nsudo wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo\n```\n\n+ 下载docker-ce.repo：\n\n```bash\ncd /etc/yum.repos.d\nsudo wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo\n```\n\n+ 手动添加kubernetes.repo\n\n```bash\ncat <<EOF > /etc/yum.repos.d/kubernetes.repo\n\n[kubernetes]\n \nname=Kubernetes\n \nbaseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/\n \nenabled=1\n \ngpgcheck=1\n \nrepo_gpgcheck=0\n \ngpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg\nEOF\n```\n## 添加网桥过滤和地址转发功能\n\n使用`sudo vim /etc/sysctl.d/kubernetes.conf`编辑文件，添加如下配置：\n\n```\nnet.bridge.bridge-nf-call-ip6tables = 1\nnet.bridge.bridge-nf-call-iptables = 1\nnet.ipv4.ip_forward = 1\n```\n重新加载配置:`sysctl -p`\n\n加载网桥过滤模块:`sudo modprobe br_netfilter`\n\n查看网桥过滤模块是否加载成功:`lsmod | grep br_netfilter`\n\n### 配置ipvs功能\n\n```bash\nsudo yum install ipset ipvsadm -y\n```\n\n```bash\ncat <<EOF> /etc/sysconfig/modules/ipvs.modules\n \n#!/bin/bash\n \nmodprobe -- ip_vs\n \nmodprobe -- ip_vs_rr\n \nmodprobe -- ip_vs_wrr\n \nmodprobe -- ip_vs_sh\n \nmodprobe -- nf_conntrack_ipv4\n \nEOF\n```\n如果提示没有`nf_conntrack_ipv4`，可能是系统版本的问题，可以尝试换成`nf_conntrack`。\n\n增加权限:`sudo chmod +x /etc/sysconfig/modules/ipvs.modules`\n\n执行脚本:`sudo /bin/bash /etc/sysconfig/modules/ipvs.modules`\n\n查看对应的模块是否加载成功:`lsmod | grep -e -ip_vs -e nf_conntrack_ipv4`\n\n\n\n## 安装\n\n### 安装docker\n\n```bash\nsudo yum install -y docker-ce docker-ce-cli containerd.io\n```\n如果怕太慢可自行换源，可以参考[centos安装配置docker](/pages/292cb3)。\n\n\n启动Docker服务并激活开机启动：\n\n```bash\nsystemctl start docker\nsystemctl enable docker\n```\n\n### 安装k8s组件\n\n```bash\nsudo yum install -y kubelet kubeadm kubectl\n```\n\n配置kubelet的cgroup\n\n```bash\nsudo vim /etc/sysconfig/kubelet\n```\n添加如下配置\n```\nKUBELET_CGROUP_ARGS=\"--cgroup-driver=systemd\"\nKUBE_PROXY_MODE=\"ipvs\"\n```\n\n![](https://img.peacesheep.xyz/20230309163830.png)\n\n设置kubelet开机自启\n\n```bash\nsystemctl start kubelet\nsystemctl enable kubelet\n```\n\n## 启动\n\n### 主节点\n\n```bash\nsudo kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12\n```\n注意这个是内网使用的，如果工作节点要从外网访问，需要使用`--apiserver-advertise-address=master公网ip`。\n成功后记录下最后一句话：\n\n![](https://img.peacesheep.xyz/20230309163925.png)\n\n然后运行\n\n```bash\nmkdir -p $HOME/.kube\n \nsudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config\n \nsudo chown $(id -u):$(id -g) $HOME/.kube/config\n```\n\n创建网络flannel：\n\n```bash\nkubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml\n```\n### 工作节点\n\n运行刚刚记录下的很长的命令。\n\n\n再回到master上，使用`kubectl get nodes`，可以看到两个节点都Ready了。\n\n![](https://img.peacesheep.xyz/20230309163907.png)\n\n如果一直在NotReady，可以使用`kubectl describe node node名字`查看一下哪里的问题。\n\n\n## 测试\n\n新建一个pod.yaml\n\n```yml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: k8s-tomcat\n  labels:\n    app: k8s\nspec:\n  containers:\n    - name: k8s-tomcat\n      image: tomcat:mytomcat\n      ports:\n        - containerPort: 8080\n\n```\n\n创建一个svc.yaml\n\n```yml\napiVersion: v1\nkind: Service\nmetadata:\n  name: k8s-tomcat-svc\nspec:\n  selector:\n    app: k8s\n  type: NodePort\n  ports:\n    - protocol: TCP\n      port: 8080\n      targetPort: 8080\n\n```\n\n使用 `kubectl create -f pod.yaml`命令创建Pod。\n使用`kubectl create -f svc.yaml`创建服务，`kubectl get svc`查看服务。\n\n![](https://img.peacesheep.xyz/20230309163946.png)\n\n看到pod的status为running的时候，可以访问一下localhost:xxx，如果出现404界面或者tomcat主页则成功了。端口为上面服务中看到的端口。\n\n![](https://img.peacesheep.xyz/20230309164009.png)\n\n## 错误解决\n\n### [ERROR CRI]: container runtime is not running\n\n解决方案：\n\n```sh\nsudo rm -rf /etc/containerd/config.toml\nsystemctl restart containerd\n```\n\n### ERROR FileContent--proc-sys-net-bridge-bridge-nf-call-iptables]: /proc/sys/net/bridge/bridge-nf-call-iptables does not exist\n之前没有配置[添加网桥过滤和地址转发功能](#添加网桥过滤和地址转发功能)。\n\n使用\n```bash\necho \"1\">/proc/sys/net/bridge/bridge-nf-call-iptables\n\necho \"1\">/proc/sys/net/bridge/bridge-nf-call-ip6tables\n```\n如果没有这个文件，则先用`modprobe br_netfilte`命令。\n\n### ERROR FileAvailable--etc-kubernetes-kubelet.conf]: /etc/kubernetes/kubelet.conf already exists\n\n\n```bash\nkubeadm reset -f\n```\n重置节点，如果不行直接强制删除对应的文件。\n\n直接删除对应的文件。\n\n```bash\nsudo rm -rf /etc/kubernetes/pki/ca.crt\nsudo rm -rf /etc/kubernetes/kubelet.conf\nsudo rm -rf /etc/kubernetes/bootstrap-kubelet.conf\n```\n\n\n###  使用kubectl出现“Unable to connect to the server: x509: certificate signed by unknown authority”\n\n后来也出现了一次“The connection to the server localhost:8080 was refused - did you specify the right host or port?“用这个方法也解决了，但是也有一次同样的问题没有解决。如果用这个方案解决不了可以再去搜一下。\n\n\n```bash\nrm -rf $HOME/.kube\nmkdir -p $HOME/.kube\nsudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config\nsudo chown $(id -u):$(id -g) $HOME/.kube/config\n```\n\n### nodePort: Invalid value valid ports is 30000-32767\n\n\n```bash\nvim /etc/kubernetes/manifests/kube-apiserver.yaml\n```\n找到 `--service-cluster-ip-range` 这一行，在这一行的下一行增加如下内容\n\n`- --service-node-port-range=1-65535`\n\n::: tip 参考链接\n[kubernetes(k8s)安装教程-小饼干0612](https://blog.csdn.net/weixin_57250068/article/details/123368726)\n\n[k8s 简单demo--部署 tomcat-天青如水](https://blog.csdn.net/qq_16829085/article/details/108305570)\n\n[Kubernetes 必须知道的概念-你好树洞先生](https://www.jianshu.com/p/bee84224047d)\n:::",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [
+      "k8s",
+      "docker"
+    ],
+    "publishedAt": "2022-10-06 22:43:09",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/04. k8s介绍及安装教程.md"
+  },
+  {
+    "slug": "d5bdc1",
+    "legacyPermalink": "/pages/d5bdc1/",
+    "title": "github actions自动部署前端项目",
+    "description": "之前的博客每次只要运行一个deploy.sh就可以了，但是还是不优雅，如果有一个CI能全自动部署就好了。",
+    "contentMarkdown": "之前的博客每次只要运行一个deploy.sh就可以了，但是还是不优雅，如果有一个CI能全自动部署就好了。\n\n<!-- more -->\n\n## 1. 添加yml文件\n在博客根目录新建.github文件夹，然后里面新建workflows文件夹，在里面新建一个yml文件，命名无所谓，比如可以叫`buildAndpush.yml`。然后再里面新建如下内容：\n\n```yml\n\nname: build and push\n\non:\n  push:\n    branches: [ \"master\" ]\n  pull_request:\n    branches: [ \"master\" ]\n\njobs:\n  build:\n\n    runs-on: ubuntu-latest\n\n    strategy:\n      matrix:\n        node-version: [18.x]\n        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/\n\n    steps:\n    - uses: actions/checkout@v3\n    - name: Use Node.js ${{ matrix.node-version }}\n      uses: actions/setup-node@v3\n      with:\n        node-version: ${{ matrix.node-version }}\n        cache: 'npm'\n\n    - name: build\n      run: |\n        npm install\n        npm run build\n    - name: push\n      uses: wlixcc/SFTP-Deploy-Action@v1.2.4\n      with:\n        username: 'git'\n        server: '${{secrets.REMOTE_ADDRESS}}'\n        ssh_private_key: ${{ secrets.GIT_SSH_KEY }} \n        local_path: './docs/.vuepress/dist/*'\n        remote_path: '/srv/blog'\n\n```\n\n修改其中的`/srv/blog`为你要在服务器上部署的路径，`git`是你连接服务器的用户名。\n\n## 2. 添加secrets\n\n添加两个secrets。一个是`REMOTE_ADDRESS`，是你的服务器的ip地址；另一个是`GIT_SSH_KEY`，是能够登陆服务器的用户的<mark>私钥</mark>。\n",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [
+      "git",
+      "github"
+    ],
+    "publishedAt": "2023-02-28 22:49:50",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/05. github actions自动部署前端项目.md"
+  },
+  {
+    "slug": "8cd9d7",
+    "legacyPermalink": "/pages/8cd9d7/",
+    "title": "联邦学习框架flower的安装与模拟",
+    "description": "Flower (flwr) 是一个用于构建联邦学习系统的框架，官网是:https://flower.dev/。",
+    "contentMarkdown": "Flower (flwr) 是一个用于构建联邦学习系统的框架，官网是:[https://flower.dev/](https://flower.dev/)。\n\n<!-- more -->\n\n## 特点\n\n它的设计基于以下指导原则：可定制化：不同的用例需要不同的联邦学习系统。Flower允许根据每个用例的需求进行广泛的配置。\n\n1. Flower是一个通用的联邦学习框架，可以支持多种机器学习库和算法，而其他框架如TensorFlow Federated（TFF）和FedML则更依赖于特定的库或算法。\n2. Flower是一个轻量级的联邦学习框架，它只提供了最基本的抽象和接口，让用户可以自由地定义自己的客户端和服务器逻辑，而其他框架如TFF和FedML则提供了更多的内置功能和组件，但也增加了复杂度和限制。\n3. Flower是一个跨平台的联邦学习框架，它可以运行在不同的操作系统和硬件上，而其他框架如TFF则只能运行在Linux上。\n\n## 安装\n\n安装可以使用pip：` pip install flwr`。如果需要使用pytorch之类的需要额外安装。\n\n## 模拟\n\nflwr除了支持实际的一个server，多个client这种方式，在很多时候我们需要的是调试代码，因此需要单机模拟。一个官方的demo见[github](https://github.com/adap/flower/tree/main/examples/simulation_pytorch).\n\n有以下两个需要注意的地方：\n\n### 1. 关于“客户端”的理解\n\n在模拟中，为了节省资源，flower采取的措施是在训练时才会实例化一个客户端，训练完之后会销毁。也就是说客户端是一种无状态的对象，不要在客户端内保存任何内容。在训练前会调用`set_paramas`函数来设定这个客户端的模型参数，客户端本地保存模型参数是没有意义的。\n\n### 2. 关于flower模拟时内存占用过大的问题\n\nflower的模拟非常占用内存，试试上并不是他的客户端占用，而是服务端。解决办法是调小客户端的进程数。代码实例如下：\n\n```python\nserver = fl.server.Server(strategy=strategy, client_manager=RLManager())\n    server.set_max_workers(1)\n    # start simulation\n    fl.simulation.start_simulation(\n        client_fn=client_fn,\n        num_clients=pool_size,\n        client_resources=client_resources,\n        config=fl.server.ServerConfig(num_rounds=NUM_ROUNDS),\n        ray_init_args=ray_init_args,\n        server=server,\n    )\n\n```",
+    "categories": [
+      "项目",
+      "联邦学习",
+      "框架使用"
+    ],
+    "tags": [],
+    "publishedAt": "2023-03-14 01:04:48",
+    "sourcePath": "03. 项目/03. 联邦学习/01. 框架使用/01. flower的安装与模拟.md"
+  },
+  {
+    "slug": "280f10",
+    "legacyPermalink": "/pages/280f10/",
+    "title": "关于windows没有休眠选项（控制面板电源选项也没有）的解决方案",
+    "description": "我的主机放在自己的卧室，晚上睡觉不关太吵了，关了的话所有的软件又得重新打开，很麻烦，想要用休眠，但是找不到这个按钮。",
+    "contentMarkdown": "我的主机放在自己的卧室，晚上睡觉不关太吵了，关了的话所有的软件又得重新打开，很麻烦，想要用休眠，但是找不到这个按钮。\n\n<!-- more -->\n\n## 关于windows的“睡眠”与“休眠”\n\n在windows中，睡眠翻译为“sleep”，指的是所有硬件都处于低功耗模式，但是仍然处于运行状态，此时数据仍然保存在内存中。休眠翻译为“hibernate”。此时数据保存在磁盘中，硬件处于关闭状态，再次开机会从硬盘中加载到内存。\n\n## 常规的开启休眠的方法\n\n如果你从百度中搜索“windows10没有休眠”，会发现千篇一律的都是让你从控制面板-电源选项-选择电源按钮的功能中修改。如果你的控制面板如下图所示：那么直接勾选即可。\n\n![](https://img.peacesheep.xyz/20230320213038.png)\n\n## 控制面板中也没有的办法\n\n<mark>但是在某些情况下（例如我自己），控制面板这里也没有休眠</mark>，那就需要用到组策略了。打开运行，输入`gpedit.msc`打开组策略编辑器，依次展开计算机配置-管理模板-Windows组件-文件资源管理器（真的离谱，不知道为什么是在这里），在右侧把“在电源选项菜单中显示休眠”改成“已启用就可以了。\n\n![](https://img.peacesheep.xyz/20230320213713.png)\n\n百度搜了半天没收到...还是在google找到的。",
+    "categories": [
+      "常用操作",
+      "常见系统问题处理"
+    ],
+    "tags": [],
+    "publishedAt": "2023-03-20 17:13:39",
+    "sourcePath": "05. 教程/06. 使用技巧/02. 关于windows没有休眠选项的解决方案.md"
+  },
+  {
+    "slug": "4a9c79",
+    "legacyPermalink": "/pages/4a9c79/",
+    "title": "element-plus滚动条滚动到底部",
+    "description": "const addMsg = (messageObj: any, sendBySelf: boolean) = { if (scrollContainerRef.value != null && scrollContentRef.value!=null) { nextTick(() = { scrollContainerRef.value!.setScrollTop(scrollContentRef.value!.clientHeight) })",
+    "contentMarkdown": "```html\n<el-scrollbar ref=\"scrollContainerRef\" height=\"50vh\" class=\"message-box\">\n    <div ref=\"scrollContentRef\">\n        <div v-for=\"message in messages\" :key=\"message.id\" class=\"message\">\n        </div>\n    </div>\n</el-scrollbar>\n\n<script lang=\"ts\" setup>\nconst scrollContainerRef: any = ref(null);\nconst scrollContentRef:any = ref(null);\n\nconst addMsg = (messageObj: any, sendBySelf: boolean) => {\n    if (scrollContainerRef.value != null && scrollContentRef.value!=null) {\n        nextTick(() => {\n            scrollContainerRef.value!.setScrollTop(scrollContentRef.value!.clientHeight)\n        })\n       \n\n    } \n}\n</script>\n\n\n\n```\n\n需要注意的点有：\n1. 需要对scollbar设置高度，如果没有设置，但是下面的div设置了高度，会导致滚动条还是原生滚动条，因为这个找了很久。\n2. 必须要放在nextTick函数里面，不然由于Vue的异步更新机制，可能导致执行代码的时候DOM还没有更新，即`scrollContentRef.value!.clientHeight`还是原来的值。",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2023-04-23 18:20:11",
+    "sourcePath": "05. 教程/01. web/01. element-plus滚动条滚动到底部.md"
+  },
+  {
+    "slug": "e9fc5c",
+    "legacyPermalink": "/pages/e9fc5c/",
+    "title": "使用python批量管理linux设备",
+    "description": "为了省赛比赛过程中批量管理选手机，写了一个python文件，记录一下方便以后使用。",
+    "contentMarkdown": "为了省赛比赛过程中批量管理选手机，写了一个python文件，记录一下方便以后使用。\n\n<!-- more -->\n\n## 代码\n```python\nfrom fabric import Connection\nfrom typing import List\nfrom threading import Thread,Lock\nfrom datetime import datetime\nimport time\nimport os\nPRIVATE_KEY = \"id_rsa\"\nADMIN_USER = \"liyaning\"\nNORMAL_USER = \"jscpc\"\nSUDO_PASSWORD = \"123\"\nUNLOCK_COMMAND = {'command':\"export DISPLAY=:0; gnome-screensaver; gnome-screensaver-command -d;\",'user':NORMAL_USER}\nLOCK_COMMAND = {'command':\"export DISPLAY=:0; gnome-screensaver; gnome-screensaver-command -l;\",'user':ADMIN_USER}\nLOGOUT_COMMAND = {'command':\"gnome-session-quit --force\",'user':NORMAL_USER}\nCLEAR_COMMAND = {'command':[\"rm -rf /tmp/*\", \"rm -rf /var/tmp/*\", \"rsync -av --delete /opt/backup/jscpc-backup/jscpc /home\"],'user':ADMIN_USER}\n\n\nCOMMAND = CLEAR_COMMAND\n\n\nclass Result:\n    def __init__(self,server,success,msg):\n        self.server = server\n        self.success = success\n        self.msg = msg\n\n\ndef generage_servers()->List[Connection]:\n    return [f'192.168.{x}.{y}' for x in range(1,2) for y in range(103,104)]\n\n\ndef fun(server:str):\n    conn = Connection(server,user = COMMAND['user'])\n    try:\n        if COMMAND['user'] == ADMIN_USER:\n            for comm in COMMAND['command']:\n                msg:str = str(conn.sudo(comm,hide=\"both\",password=SUDO_PASSWORD))\n        else:\n            msg:str = str(conn.run(COMMAND['command'],hide=\"both\"))\n        msg = msg.replace(\"\\n\",\"\").replace(\"\\r\",\"\")\n        result = Result(server,True,msg)\n        success_lock.acquire()\n        successes.append(result)\n        success_lock.release()\n    except Exception as err:\n        msg = str(err)\n        msg = msg.replace(\"\\n\",\"\").replace(\"\\r\",\"\")\n        result = Result(server,False,msg)\n        fail_lock.acquire()\n        fails.append(result)\n        fail_lock.release()\n\nsuccess_lock = Lock()\nfail_lock = Lock()\n\nsuccesses:List[Result] = list()\nfails:List[Result] = list()\n\n\n\nif __name__ == \"__main__\":\n\n    start_time = time.time()\n    threads:List[Thread] = list()\n    servers = generage_servers()\n    for server in servers:\n        t = Thread(target=fun,args=(server,))\n        t.start()\n        threads.append(t)\n    \n    for  t in threads:\n        t.join()\n\n    print(f\"总数量:{len(servers)},成功数量:{len(successes)},失败数量:{len(fails)}\")\n\n\n    end_time = time.time()\n    print(f\"程序运行时间为：{end_time - start_time}秒\")\n\n    fmt_time = datetime.now().strftime(\"%Y-%m-%d-%H-%M-%S.txt\")\n\n    successes.sort(key=lambda x: x.server)\n    fails.sort(key=lambda x: x.server)\n\n    if not os.path.exists(\"log\"):\n        os.mkdir(\"log\")\n    with open(f\"log/success-{fmt_time}\",\"w\",encoding=\"utf8\") as f:\n        f.write(f\"command:{COMMAND}\\n\")\n        for suc in successes:\n            content = f\"{suc.server}\\n\"\n            f.write(content)\n    \n    with open(f\"log/fail-{fmt_time}\",\"w\",encoding=\"utf8\") as f:\n        f.write(f\"command:{COMMAND}\\n\")\n        for fail in fails:\n            content = f\"{fail.server}:{fail.msg}\\n\"\n            f.write(content)\n    \n```\n\n### 准备\n1. 修改一些变量：\n\nPRIVATE_KEY = 私钥文件的路径\nADMIN_USER = 具有root权限的用户名，注意只要具有root权限，其命令就会以sudo执行\nNORMAL_USER = 普通用户的用户名\nSUDO_PASSWORD = sudo用户的密码\n\n2. 保与私钥对应的公钥已被添加进目标主机。\n\n3. 修改generage_servers()函数，生成需要控制的ip地址。\n\n### 使用\n\n修改COMMAND=XX，为你要执行的命令，直接运行，main.py即可。",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-01 16:13:18",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/07. 使用python批量管理linux设备.md"
+  },
+  {
+    "slug": "8daede",
+    "legacyPermalink": "/pages/8daede/",
+    "title": "Django和DRF莫名报403的离谱问题",
+    "description": "如果使用Django并使用了DRF，并且使用了DRF的认证，并且开启了debug模式，URL中写的为\"xxx/\"，而访问的时候URL是\"xxx\"没有最后的杠，则会报403错误。",
+    "contentMarkdown": "如果使用Django并使用了DRF，并且使用了DRF的认证，并且开启了debug模式，URL中写的为\"xxx/\"，而访问的时候URL是\"xxx\"没有最后的杠，则会报403错误。",
+    "categories": [
+      "语言",
+      "Python",
+      "Django"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-09 21:26:58",
+    "sourcePath": "01. 语言/02. Python/01. Django/02. Django和DRF莫名报403的离谱问题.md"
+  },
+  {
+    "slug": "c11fc9",
+    "legacyPermalink": "/pages/c11fc9/",
+    "title": "说明",
+    "description": "该分类用于记录一些经常用到的简短代码，由于比较简短不适合放到github，但同时又经常用不想每次都写。",
+    "contentMarkdown": "该分类用于记录一些经常用到的简短代码，由于比较简短不适合放到github，但同时又经常用不想每次都写。\n\n<!-- more -- >",
+    "categories": [
+      "常用操作",
+      "常用代码"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-11 01:27:41",
+    "sourcePath": "100. 常用操作/05. 常用代码/00. 说明.md"
+  },
+  {
+    "slug": "9dc512",
+    "legacyPermalink": "/pages/9dc512/",
+    "title": "翻译整个latex文件夹",
+    "description": "使用python把当前文件夹下的所有tex文件调用translatetex命令翻译，保存到translate文件夹，同时把所有其他文件直接复制到translate文件夹。有关translatetex，请见MathTranslate",
+    "contentMarkdown": "使用python把当前文件夹下的所有tex文件调用`translate_tex`命令翻译，保存到translate文件夹，同时把所有其他文件直接复制到translate文件夹。有关`translate_tex`，请见[MathTranslate](https://github.com/SUSYUSTC/MathTranslate/blob/main/README.zh.md)\n\n<!-- more -->\n\n```python\nimport os\nimport shutil\n\n# 指定原始文件夹路径和目标文件夹路径\nsrc_folder = '.'\ndst_folder = 'translate'\n\n# 获取原始文件夹和目标文件夹的绝对路径\nsrc_folder_abs = os.path.abspath(src_folder)\ndst_folder_abs = os.path.abspath(dst_folder)\n\n# 递归遍历原始文件夹中的所有文件和子文件夹\nfor dirpath, dirnames, filenames in os.walk(src_folder):\n    # 判断目标文件夹是否是原始文件夹的子文件夹\n    if os.path.abspath(dirpath).startswith(dst_folder_abs):\n        continue\n\n    # 创建对应的子目录\n    rel_dir = os.path.relpath(dirpath, src_folder_abs)\n    dst_dir = os.path.join(dst_folder_abs, rel_dir)\n    os.makedirs(dst_dir, exist_ok=True)\n\n    # 拷贝所有文件到目标文件夹\n    for filename in filenames:\n        src_file = os.path.join(dirpath, filename)\n        dst_file = os.path.join(dst_dir, filename)\n\n        if filename.endswith('.tex'):\n                # 构造命令行\n                print(f\"translating {src_file}\")\n                cmd = 'translate_tex {} -o {} -engine tencent'.format(src_file,dst_file)\n                # 执行命令行\n                os.system(cmd)\n        else:\n            shutil.copy2(src_file, dst_file)\n\n\n```",
+    "categories": [
+      "常用操作",
+      "常用代码"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-11 01:55:27",
+    "sourcePath": "100. 常用操作/05. 常用代码/01. 翻译整个latex文件夹.md"
+  },
+  {
+    "slug": "1a9e77",
+    "legacyPermalink": "/pages/1a9e77/",
+    "title": "domjudge相关的一些常见问题",
+    "description": "之前比赛的时候scoreboard里面observers和paticipants是一起排名的，自己安装测试的时候发现两个分开了。解决方法是在Team Categories里面把两个的sort设置成相同的数值。",
+    "contentMarkdown": "## 关于scoreboard排名分组的问题？\n\n之前比赛的时候scoreboard里面observers和paticipants是一起排名的，自己安装测试的时候发现两个分开了。解决方法是在Team Categories里面把两个的sort设置成相同的数值。\n\n## 如何获得或修改编译命令？\n\n点击Languages，点击你需要的语言，点击Compile script，再点击View/edit file contents。",
+    "categories": [
+      "竞赛",
+      "程序设计"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-21 21:13:14",
+    "sourcePath": "02. 竞赛/02. 程序设计/02. domjudge相关的一些常见问题.md"
+  },
+  {
+    "slug": "258c2e",
+    "legacyPermalink": "/pages/258c2e/",
+    "title": "resolver滚榜工具使用指南",
+    "description": "我是用的是resolver v2.4.727，如果是不同的版本可能会不一样。",
+    "contentMarkdown": "我是用的是resolver v2.4.727，如果是不同的版本可能会不一样。\n\n## 关于数据源\n\nresolver支持多种数据源，我是用的是本地文件，因为这次主办方滚榜的机器上不好连接网络。\n\n## 文件结构\n\n\n```\nCDP/\n├── event-feed.json\n|── teams/\n|    └── {teamid}/\n|        └── photo.jpg # 选手图片\n└── organizations/\n     └── {organization_id}\n         └── logo.jpg # 学校logo\n```\n\n图片格式可以是混的，也就是说有的是jpg，有的是png也是可以的。\n\n## event-feed.json如何得到\n\n我使用的domjudge是8.1.3，不同版本可能不一样。访问domjudge/api/v4/contests/{contest_id}/event-feed/?stream=false，可以得到一个名字叫event-feed的文件，用awards.bat打开这个文件即可。\n\n\n\n",
+    "categories": [
+      "竞赛",
+      "程序设计"
+    ],
+    "tags": [],
+    "publishedAt": "2023-05-24 21:15:30",
+    "sourcePath": "02. 竞赛/02. 程序设计/03. resolver滚榜工具使用指南.md"
+  },
+  {
+    "slug": "72f3ef",
+    "legacyPermalink": "/pages/72f3ef/",
+    "title": "使用树莓派安装OMV系统并启用nextcloud",
+    "description": "1. 一个树莓派 2. 一个内存卡，最好不低于8G 3. 一个ext4格式的硬盘（NTFS会有权限问题，虽然能用ntfs-3g解决，但是很麻烦）",
+    "contentMarkdown": "## 前置需要\n\n1. 一个树莓派\n2. 一个内存卡，最好不低于8G\n3. 一个ext4格式的硬盘（NTFS会有权限问题，虽然能用ntfs-3g解决，但是很麻烦）\n   \n\n## 安装过程\n\n### 1. 安装树莓派操作系统。\n\n在[树莓派官网](https://www.raspberrypi.com/software/operating-systems/)下载<mark>Lite版本64位操作系统，不能用desktop版，不能用32位</mark>，烧录到内存卡。使用`sudo raspi-config`可以连接到无线网络。\n\n### 2. 安装OMV系统\n\n请见[知乎](https://zhuanlan.zhihu.com/p/393662555)。只要先安装好OMV就可以，插件部分可以不用看。\n\n部分可能用到的网站：[清华大学树莓派镜像源使用帮助](https://mirrors.tuna.tsinghua.edu.cn/help/raspbian/)\n\n### 3. 安装OMV-extras\n\nOMV-extras是一个插件，可以让OMV支持docker等。官方有一个[一键安装脚本](https://www.bilibili.com/read/cv19005382)，但是需要访问外网，可能会失败。B站有人给出了一个[解决方案](https://www.bilibili.com/read/cv19005382)。\n\n## 4. 安装docker。\n\n参考[知乎](https://zhuanlan.zhihu.com/p/634569985)。\n\n如果遇到因为软件源公钥的问题，可以尝试直接把对应的source.list.d下面的list文件注释掉，我这样暂时没有遇到问题。\n\n如果遇到`[ERROR   ] Parent directory not present in /usr/share/php/openmediavault/system/process.inc:220`这种错误，可以先`sudo apt-get update`和`sudo apt-get upgrade`尝试，这个错误很玄学，可以多试几次，有时就能成功。\n\n## 4. 启动nextcloud\n\n在“服务-compose-files”里面新建一个文件，启动就可以了。\n\n```Dockerfile\nversion: '2'\n\nservices:\n  db:\n    image: mariadb:10.6\n    restart: always\n    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW\n    volumes:\n      - /srv/dev-disk-by-uuid-5146d820-ae7f-c04e-afe4-b57d4724d435/docker/appdata/nextcloud/mysql:/var/lib/mysql\n    environment:\n      - MYSQL_ROOT_PASSWORD=nextcloud\n      - MYSQL_PASSWORD=nextcloud\n      - MYSQL_DATABASE=nextcloud\n      - MYSQL_USER=nextcloud\n\n  app:\n    image: nextcloud\n    restart: always\n    ports:\n      - 8080:80\n    links:\n      - db\n    volumes:\n      - /srv/dev-disk-by-uuid-5146d820-ae7f-c04e-afe4-b57d4724d435/docker/appdata/nextcloud/html:/var/www/html\n      - /srv/dev-disk-by-uuid-5146d820-ae7f-c04e-afe4-b57d4724d435/data:/var/www/html/data\n    environment:\n      - MYSQL_PASSWORD=nextcloud\n      - MYSQL_DATABASE=nextcloud\n      - MYSQL_USER=nextcloud\n      - MYSQL_HOST=db\n\n```\n\n注意三个挂载点需要根据你的情况修改。其中app里面我习惯把data挂载到其他目录，但这个可以根据你的需求决定是否需要。\n\n",
+    "categories": [
+      "教程",
+      "物联网与路由器"
+    ],
+    "tags": [],
+    "publishedAt": "2023-07-01 04:41:13",
+    "sourcePath": "05. 教程/02. 物联网与路由器/01. 使用树莓派安装OMV系统并启用nextcloud.md"
+  },
+  {
+    "slug": "0bffe6",
+    "legacyPermalink": "/pages/0bffe6/",
+    "title": "SSM简要介绍",
+    "description": "之前没有接触过Java,这次要做的导师的横向被甲方要求必须用java,必须用ssm框架,所以只能去学了一下,遇到了一些坑,在此说明一下,方便以后自己查询,如果能帮到其他人就更好了。",
+    "contentMarkdown": "之前没有接触过Java,这次要做的导师的横向被甲方要求必须用java,必须用ssm框架,所以只能去学了一下,遇到了一些坑,在此说明一下,方便以后自己查询,如果能帮到其他人就更好了。\n\n<!-- more -->\n\n## 什么是spring？\n\n对于Spring，一个很重要的作用是依赖注入。举一个例子。我们的项目可能有service层和controller层。\n\ncontroller层的定义如下：\n\n```java\n@RestController\n@RequestMapping(\"/user\")\npublic class UserController {\n    UserService userService;\n    @Autowired\n    UserController(UserService userService){\n        this.userService = userService;\n    }\n    @ResponseBody\n    @RequestMapping(value=\"/login\",produces=\"application/json;charset=UTF-8\",method = RequestMethod.POST)\n    public String login(HttpServletRequest request, UserDTO userDTO) {\n        return \"success\";\n    }\n}\n```\n\n可以看到UserController用到了UserService，如果没有spring，那么你需要自己构造一个UserService,传入到UserController中去，有了spring,那么你只需要写完UserService这个类，然后使用@Service标注，同时在Controller里面使用@AutoWired，那么spring就会自动构造一个UserSerive，注入到UserController中去。\n\n## spring的弊端与springboot\n\n要使用spring,你需要配置非常多的xml文件。例如，applicationContext.xml，spring-mvc.xml等等。这些配置文件通常很难阅读，很难配置，但是很多项目的大部分内容又是相同的，或者能按照某种模板制作出来的。为了解决这个问题，springboot诞生了。springboot使用了“约定优于配置”的方式。通俗的讲，springboot同样支持spring的功能，同时它不需要你写很多xml配置文件，例如，要扫描哪些包。默认情况下，它会扫描和application.java同目录下的包和子包，而这也符合一般人的逻辑，因此无需进行配置。\n\n举一个例子，我们去吃饭，spring需要你配置好，你是中国人还是外国人，你是否不吃肉，你是否用一双筷子，你是否使用勺子等等。spring就是认为你是中国人，你吃肉，你使用筷子。如果你是素食主义者，那么在单独说明就好了，而不是所有东西都必须配置。\n\n## 遇到的一些坑\n\n由于是第一次用java和ssm，遇到了一些坑，在此说明一下（可能很离谱）。\n\n### 1.xml文件提前结束\n\n在target/classes里面有一个空的xml文件，不管怎么重新生成都不行，然后一直报错什么“文件提前结束”。后来直接把这个xml删除了就好了，估计是之前不小心生成的时候被我强制关掉了，然后就留了一个空文件，后来改了文件名不会生成这个xml了。（PS：重新生成不应该把这个目录自动清空在重新生成么！！）\n\n## 2. 一开始用的spring,改用springboot之后报错\n\nParameter 0 of constructor in com.main.carbon_emission_monitor.repo.impl.UserRepoImpl required a bean of type 'com.main.carbon_emission_monitor.dao.UserDAO' that could not be found.\n\n检查了UserDAO明明存在，但就是报错，后来突然想到，UserDAO是个interface，之前有mybatis实现，结果改用springboot之后，没有加mybatis相关的东西，导致这个接口没有实现。",
+    "categories": [
+      "语言",
+      "java",
+      "SSM初学"
+    ],
+    "tags": [],
+    "publishedAt": "2023-09-20 17:12:40",
+    "sourcePath": "01. 语言/04. java/01. SSM初学/01. SSM简要介绍.md"
+  },
+  {
+    "slug": "c509e7",
+    "legacyPermalink": "/pages/c509e7/",
+    "title": "lombok与mapstruct的冲突问题",
+    "description": "如果同时使用了lombok与mapstruct，则可能导致以下各种问题：",
+    "contentMarkdown": "如果同时使用了lombok与mapstruct，则可能导致以下各种问题：\n\n<!-- more -->\n\n1. IDE能正确解析lombok生成的方法，但是编译报错找不到方法。\n2. mapstruct映射的时候，原来的对象没问题，新对象的所有属性为null。\n\n## 解决方案\n\n1. 在pom.xml添加依赖：\n\n```xml\n\n\t<dependency>\n\t\t\t<groupId>org.mapstruct</groupId>\n\t\t\t<artifactId>mapstruct</artifactId>\n\t\t\t<version>${org.mapstruct.version}</version>\n\t\t</dependency>\n\n\t\t<dependency>\n\t\t\t<groupId>org.mapstruct</groupId>\n\t\t\t<artifactId>mapstruct-processor</artifactId>\n\t\t\t<version>1.5.5.Final</version>\n\t\t</dependency>\n\t\t<dependency>\n\t\t\t<groupId>org.springframework.boot</groupId>\n\t\t\t<artifactId>spring-boot-starter-actuator</artifactId>\n\t\t</dependency>\n```\n\n请<mark>务必按照这个顺序</mark>。\n\n2. 在pom.xml继续添加以下内容:\n\n```xml\n\n<build>\n\t\t<plugins>\n\t\t\t<plugin>\n\t\t\t<groupId>org.apache.maven.plugins</groupId>\n\t\t\t<artifactId>maven-compiler-plugin</artifactId>\n\t\t\t<version>${maven-compiler-plugin.version}</version>\n\t\t\t<configuration>\n\t\t\t\t<source>${java.version}</source>\n\t\t\t\t<target>${java.version}</target>\n\t\t\t\t<release>>${java.version}</release>\n\t\t\t\t<annotationProcessorPaths>\n\t\t\t\t\t<path>\n\t\t\t\t\t\t<groupId>org.mapstruct</groupId>\n\t\t\t\t\t\t<artifactId>mapstruct-processor</artifactId>\n\t\t\t\t\t\t<version>${org.mapstruct.version}</version>\n\t\t\t\t\t</path>\n\t\t\t\t\t<path>\n\t\t\t\t\t\t<groupId>org.projectlombok</groupId>\n\t\t\t\t\t\t<artifactId>lombok</artifactId>\n\t\t\t\t\t\t<version>${lombok.version}</version>\n\t\t\t\t\t</path>\n\t\t\t\t\t<path>\n\t\t\t\t\t\t<groupId>org.projectlombok</groupId>\n\t\t\t\t\t\t<artifactId>lombok-mapstruct-binding</artifactId>\n\t\t\t\t\t\t<version>0.2.0</version>\n\t\t\t\t\t</path>\n\t\t\t\t</annotationProcessorPaths>\n\t\t\t</configuration>\n\t\t\t</plugin>\n\t\t</plugins>\n\t</build>\n\n```\n\n请<mark>务必按照这个顺序</mark>。\n",
+    "categories": [
+      "语言",
+      "java",
+      "依赖相关"
+    ],
+    "tags": [],
+    "publishedAt": "2023-09-27 11:11:06",
+    "sourcePath": "01. 语言/04. java/02. 依赖相关/01. lombok与mapstruct的冲突问题.md"
+  },
+  {
+    "slug": "1ea858",
+    "legacyPermalink": "/pages/1ea858/",
+    "title": "关于如何使用机房电脑批量烧录U盘的奇思妙想",
+    "description": "因为举办ICPC南京站的需要，想要烧录大量的ISO到U盘里面方便装系统，但是因为一个30口的USBHUB都要大几百，所以突发奇想能不能用机房电脑来进行这个操作。",
+    "contentMarkdown": "因为举办ICPC南京站的需要，想要烧录大量的ISO到U盘里面方便装系统，但是因为一个30口的USBHUB都要大几百，所以突发奇想能不能用机房电脑来进行这个操作。\n\n<!-- more -->\n\n## 需要的软件\n\n1. ventoy\n\n因为找了半天找不到可以命令行烧录的软件，但是找到了ventoy，可以使用命令行把一个U盘做成ventoyU盘，然后直接把iso文件复制进去就可以了。\n\n2. 极域电子教室\n\n因为要批量给所有电脑发送文件夹，以及批量执行命令。\n\n## 操作方法\n\n写了一个python文件：\n\n```python\n\nimport os\nimport shutil\nimport subprocess\nimport webbrowser\nfrom shutil import copyfile\n\nfile_path = os.path.abspath(__file__)\ncurrent_directory = os.path.dirname(file_path)\nISO_PATH = os.path.join(current_directory, \"icpc.iso\")\nVENTOY_PATH = os.path.join(current_directory, \"ventoy/Ventoy2Disk.exe\")\n\n\ndef show_result(copy_result):\n    with open(os.path.join(current_directory, \"ventoy/cli_done.txt\"), \"r\") as f:\n        result = f.readline()\n    print(result)\n    if result.find(\"0\") != -1:\n        result = \"SUCCESS\"\n    else:\n        result = \"FAIL\"\n\n    html_file_path = os.path.join(current_directory, \"result.html\")\n    content = f\"\"\"\n    <h1>burn result:{result}</h1>\n    <h1>copy result:{copy_result}</h1>\n    \"\"\"\n    with open(html_file_path, \"w\") as f:\n        f.write(content)\n\n    webbrowser.open('file://' + html_file_path, new=1)\n\n\ndef get_usb_drive():\n    command = 'wmic logicaldisk where \"drivetype=2\" get caption'\n    output = subprocess.check_output(command, universal_newlines=True, shell=True)\n\n    # 将输出按行拆分\n    lines = output.strip().split('\\n')\n    return lines[-1]\n\n\ndef burn_iso(usb_drive):\n    cmd = [\n        VENTOY_PATH,\n        \"VTOYCLI\",\n        \"/I\",\n        f\"/Drive:{usb_drive}\",\n    ]\n\n    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n\n    if result.returncode == 0:\n        print(f\"Successfully initialized Ventoy on {usb_drive}\")\n    else:\n        print(f\"Failed to initialize Ventoy on {usb_drive}. Error: {result.stderr.decode()}\")\n\n    # 之后你只需将ISO文件复制到U盘，Ventoy会自动检测和引导ISO文件。\n\n\ndef copy_file():\n    src = ISO_PATH\n    dst = os.path.join(get_usb_drive())\n    try:\n        shutil.copy(src, dst)\n        return \"SUCCESS\"\n    except Exception as err:\n        return str(err)\n\n\nif __name__ == \"__main__\":\n    try:\n        print(current_directory)\n        usb_drive = get_usb_drive()\n        print(f\"get usb drive success:{usb_drive}\")\n        print(\"burning\")\n        burn_iso(usb_drive)\n        print(\"copying file\")\n        copy_result = copy_file()\n        show_result(copy_result)\n    except Exception as err:\n        print(err)\n\n    input()\n\n\n```\n\n这个文件可以以命令行的方式，使用python文件所在路径下的ventoy，制作一个ventoyU盘到系统的第一个USB设备。\n\n另外这个文件需要管理员权限，所以不能直接执行，于是又写了一个VBS文件。\n\n```vbs\nSet objShell = CreateObject(\"Shell.Application\")\nobjShell.ShellExecute \"python.exe\", \"main.py\", \"\", \"runas\", 1\n\n```\n\n最后，只需要把python文件、vbs文件、iso文件、ventoy放到一个文件夹里，发送到每台电脑上，然后运行命令`cscript main.vbs`就可以了。\n\n::: tip 花絮\n在我写好脚本的一个小时后，问了下竞赛的负责老师，他已经买了USBHUB，所以我的脚本白写了..\n:::",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2023-10-31 11:05:21",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/08. 关于如何使用机房电脑批量烧录U盘的奇思妙想.md"
+  },
+  {
+    "slug": "b879e9",
+    "legacyPermalink": "/pages/b879e9/",
+    "title": "自建Zerotier节点",
+    "description": "机器 B：Desktop, MacBook",
+    "contentMarkdown": "## 环境：\n  机器 A：Desktop, Windows11\n\n  机器 B：Desktop, MacBook\n\n  机器 C：Cloud Server, Ubuntu22.04\n\n## 搭建自己的Moon\n\n### 搭建moon节点（在服务器上）\n\n参考[博客](https://www.glimmer.ltd/p/bb4e183b/)。\n\n1. 首先安装zerotier。\n\n```\ncurl -s https://install.zerotier.com | sudo bash\n```\n\n2. 创建moon.json\n\n```\ncd /var/lib/zerotier-one/\nzerotier-idtool initmoon identity.public >>moon.json\n```\n\n修改moon.json里面的stableEndpoints，例如`\"stableEndpoints\": [\"1.15.159.170/9333\"]`。\n\nmoon.json文件中的 `\"id\": \"fbaa18691f\" `就是机器的 ZeroTier Node ID.\n\n3. 设置moon签名文件\n\n\n修改完 moon.json 文件后，获取`000000deadbeef00.moon`签名文件：\n\n`zerotier-idtool genmoon moon.json`\n\n此时，在 `/var/lib/zerotier-one/ `下产生 `000000deadbeef00.moon` 文件. `deadbeef00` 就是机器 C 的 ZeroTier Node ID.\n \n4. 新建 moons.d 目录，并将 000000deadbeef00.moon 文件移动到其下：\n\n```\nmkdir moons.d  \nmv 000000deadbeef00.moon moons.d\n ```\n\n5. 重启 ZeroTier One 服务，激活设置：\n\n```\nservice zerotier-one restart\n```\n\n::: warning\n服务器务必开启9993端口的TCP和UDP\n:::\n\n### 客户端设置\n\n\n太长了，直接参考[博客](https://www.glimmer.ltd/p/bb4e183b/)。主要就是把服务器的000000deadbeef00.moon放到本地的zerotier的moons.d文件夹里面。\n\n\n### 安装Controller\n\n直接参考[官网](https://docs.zerotier.com/controller)。\n\n\n### 安装webui\n\n官网上的Controller会开启一个http服务，监听9993端口，但是只能通过API交互，很麻烦。可以装一个webui。\n\n参考[zinet](https://ztnet.network/installation/debian_11)。\n\n### 测试\n\n访问服务器地址的3000端口，也就是zinet，创建一个网络，客户端加入这个网络，可能要手段给客户端分一下IP地址。注意ztnet可能会监听localhost:3000，需要使用vscode之类的转发一下。\n\n如果看到节点都是direct就是表示走这个moon了。\n\n![](https://img.peacesheep.xyz/20231108004027.png)",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2023-11-07 23:08:16",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/09. 自建Zerotier节点.md"
+  },
+  {
+    "slug": "78742f",
+    "legacyPermalink": "/pages/78742f/",
+    "title": "ubuntu安装g++",
+    "description": "使用ubuntu 22.4安装g++失败了好几次，在此记录一下。",
+    "contentMarkdown": "使用ubuntu 22.4安装g++失败了好几次，在此记录一下。\n\n<!-- more -->\n\n## g++和build-essential的关系\n\nubuntu上默认是有gcc的，但是没有g++。如果自己来安装g++也可以，不过它涉及到一些依赖库，有点麻烦。现在有个叫build-essential的包，里面包含了很多开发必要的软件包，很全，很方便。\n\n安装方法：`apt-get install build-essential`。\n\n## 因为依赖安装失败\n\n尝试了以下方案:\n\n1. 换源:阿里、清华、163、中科大都不行。\n2. 使用 Aptitude，一直说`No solution found within the allotted time. Try harder?`。\n\n## 最终解决方案\n\n换成原版ubuntu源。\n\n\n",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2023-12-22 22:53:52",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/10. ubuntu安装g++.md"
+  },
+  {
+    "slug": "e01729",
+    "legacyPermalink": "/pages/e01729/",
+    "title": "conda从古老版本升级",
+    "description": "有一台ubuntu服务器的conda是4.9.2的，更新conda时，使用conda update -n base -c defaults conda没有任何用，提示完成了，但是版本还是没有变。",
+    "contentMarkdown": "有一台ubuntu服务器的conda是4.9.2的，更新conda时，使用`conda update -n base -c defaults conda`没有任何用，提示完成了，但是版本还是没有变。\n\n使用`conda install conda=xx.xx.x`也没有用，一直在solving environments。最后的办法是卸载了重新安装。\n\n## 卸载\n\n1. 通过查看bashrc，找到conda的安装目录。\n2. 删除conda的文件夹，注意这会把所有的环境也删掉。\n3. 删除bashrc中有关conda的这一段。\n\n## 重新安装\n\n从[conda官网](https://www.anaconda.com/download#downloads)下载合适的安装文件。对于ubuntu来说，下载一个sh文件，然后直接运行就可以。注意这个sh文件可能很大，有一个多G。",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2024-01-21 22:04:02",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/11. conda从古老版本升级.md"
+  },
+  {
+    "slug": "f60ecf",
+    "legacyPermalink": "/pages/f60ecf/",
+    "title": "mac使用docker部署nextcloud-aio并为本地域名添加https支持（未成功）",
+    "description": "请注意这是一次未成功的经历。想要在本地部署一个nextcloud talk，奈何nextcloud talk必须使用https，因此必须使用域名。如果不管https，直接在本地添加hosts或者使用本地DNS也不行，必须要用合法的SSL证书。",
+    "contentMarkdown": "请注意这是一次未成功的经历。想要在本地部署一个nextcloud talk，奈何nextcloud talk必须使用https，因此必须使用域名。如果不管https，直接在本地添加hosts或者使用本地DNS也不行，必须要用合法的SSL证书。\n\n<!-- more -->\n\n:::warning\n请注意这是一次未成功的经历\n:::\n\n基本原理是使用Caddy进行一个本地的反向代理。Caddy服务器是一个开源的，使用 Golang 编写，支持 HTTP/2 的 Web 服务端。它使用Golang 标准库提供HTTP 功能。 Caddy 一个显著的特性是默认启用HTTPS。它是第一个无需额外配置即可提供HTTPS 特性的Web 服务器。\n\n1. 假设域名为 `peacecloud.local` 或者你想一个局域网用的名称，必须含.号。\n\n2. 生成证书，在当前文件夹执行命令\n\n`openssl req -x509 -newkey rsa:2048 -nodes -keyout test.key -out test.pem -days 3650`\n\n注意会提示需要输入必要的信息，执行完毕会在当前路径生成test.key和test.pem。\n\n3. 配置代理\n\n在当前文件夹中，新建一个文件命名为`Caddyfile`,文件内容如下，注意替换其中的域名为你的域名，localhost:11000为实际需要访问的地址:\n\n```\nhttps://peacecloud.local:443 {\ntls /etc/caddy/pem.pem /etc/caddy/key.key\nreverse_proxy localhost:11000\n}\n```\n4. 通过docker启动candy，安装代理\n\n`docker run -d --name caddy --network host --restart always -v $PWD/Caddyfile:/etc/caddy/Caddyfile -v $PWD/test.pem:/etc/caddy/pem.pem -v $PWD/test.key:/etc/caddy/key.key -v caddy_data:/data caddy`\n\n5. 启动nextcloud-aio\n\n```\n docker run --init --sig-proxy=false --name nextcloud-aio-mastercontainer --restart always --publish 8080:8080 --env APACHE_PORT=11000 --env APACHE_IP_BINDING=0.0.0.0 --env SKIP_DOMAIN_VALIDATION=true --volume nextcloud_aio_mastercontainer:/mnt/docker-aio-config --volume /var/run/docker.sock:/var/run/docker.sock:ro nextcloud/all-in-one:latest\n```\n\n注意以上命令并不适用于MACOS，如果是MAC，需要把`/var/run/docker.sock`替换为`/var/run/docker.sock.raw`。\n\n::: warning\n特别注意: docker desktop mac版和windows版不支持`network_mode: host`。\n:::\n\n## 直接使用docker-compose文件\n\n```yaml\nversion: \"3.8\"\n\nservices:\n  caddy:\n    image: caddy:alpine\n    restart: unless-stopped\n    container_name: caddy\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n    volumes:\n      - ./Caddyfile:/etc/caddy/Caddyfile\n      - ./caddydata:/data\n      - ./pem.pem:/etc/caddy/pem.pem\n      - ./key.key:/etc/caddy/key.key \n    networks:\n      - nextcloud-aio\n   \n\n  nextcloud:\n    image: nextcloud/all-in-one:latest\n    restart: unless-stopped\n    container_name: nextcloud-aio-mastercontainer\n    ports:\n      - \"8080:8080\"\n    environment:\n      - APACHE_PORT=11000\n      - APACHE_IP_BINDING=0.0.0.0 \n      - SKIP_DOMAIN_VALIDATION=true\n    volumes:\n      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config\n      - /var/run/docker.sock.raw:/var/run/docker.sock:ro\n    depends_on:\n      - caddy\n\nvolumes:\n  nextcloud_aio_mastercontainer:\n    name: nextcloud_aio_mastercontainer\n\n\nnetworks:\n  nextcloud-aio:\n    external: true\n\n```\n\n## 失败原因\n\nnextcloud必须要有https证书，且不支持自签证书。使用自签证书之后，加入talk的时候会说internal error，查看日志一堆curl的错误，都是说证书的问题。\n\n::: tip 参考链接\n[nextcloud aio 局域网部属方式-cat650](https://zhuanlan.zhihu.com/p/668964112)\n:::",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2024-02-06 22:48:42",
+    "sourcePath": "05. 教程/01. web/02. 使用docker为本地域名添加https支持.md"
+  },
+  {
+    "slug": "026927",
+    "legacyPermalink": "/pages/026927/",
+    "title": "想自己写一个docker的说明",
+    "description": "最近没有什么需要做的事，一直在读论文，但是读论文总是感觉心里发虚，想要写点什么。",
+    "contentMarkdown": "最近没有什么需要做的事，一直在读论文，但是读论文总是感觉心里发虚，想要写点什么。\n\n最近突发奇想，docker既然这么好用，而且和我的兴趣操作系统很相关，要不自己写个docker试试。不知道最终能写到什么样子，只是希望能有点事打发一下时间。\n\n<!-- more -->\n\ndocker是用Go写的，但是可能我心中有一些执念，我一直觉得底层的东西就应该用C++写，当然上层的命令啥得无所谓，但是运行时应该用C++，因此我觉得先用C++进行尝试。",
+    "categories": [
+      "教程",
+      "docker"
+    ],
+    "tags": [],
+    "publishedAt": "2024-03-12 21:49:56",
+    "sourcePath": "03. 项目/05. docker/01. 想自己写一个docker的说明.md"
+  },
+  {
+    "slug": "606ad6",
+    "legacyPermalink": "/pages/606ad6/",
+    "title": "云计算实验二手册",
+    "description": "云计算实验二手册,主要包括四个部分，Hadoop的安装、Hadoop的配置、WordCount、和KMeans，如果有发现什么问题可以私戳我或者在评论区提出。",
+    "contentMarkdown": "云计算实验二手册,主要包括四个部分，Hadoop的安装、Hadoop的配置、WordCount、和KMeans，如果有发现什么问题可以私戳我或者在评论区提出。\n\n<!-- more -->\n\n## 一、Hadoop本体安装\n\n由于第一次实验使用了Ubuntu22.04，为了方便我们这次实验使用的操作系统也是Ubuntu22.04。\n\n### 1. 安装java\n\nHadoop 基础组件及其外围项目大多是基于 Java 的，要运行 Hadoop，我们需要在系统中安装 Java 运行时环境（JRE）。有多种 JRE 可供选择，我们使用 openjdk-11 作为 JRE。Hadoop 官方文档中说明了对 Java 版本的支持情况。Hadoop 框架使用 SSH 协议与本地（或远程计算机）进行通信，我们需要在本地计算机中安装 SSH 服务器守护程序。\n\n```shell\nsudo apt install openjdk-11-jdk openssh-server -y\n```\n\n\n\n### 2. 创建ssh密钥并添加到自己的本地计算机\n\nHadoop 通常运行于分布式环境中。在这种环境下，它使用 SSH 协议与自己（或其他服务器）进行通信，为了能够配置 Hadoop 更安全地与服务器进行通信，我们为本地环境 hadoop 用户生成公-私密钥对，以支持 SSH 中的密钥对认证：\n\n```shell\nssh-keygen -b 4096 -C \"for hadoop use\"  # 为了方便这里可以直接一路回车，如果有需要可以自己按照提示修改\nssh-copy-id -p 22 localhost\n```\n\n上述命令生成带备注信息的长度为 4096 位的 RSA 密钥，并将密钥复制至本地计算机中，用于支持 SSH 密钥对认证方式。\n\n这时候可以尝试使用`ssh localhost`，应该可以无密码登录。\n\n### 3. 下载并解压hadoop\n\nHadoop 的各种发行版本通常从 Hadoop 官方网站的[下载页面](https://hadoop.apache.org/releases.html)下载。\n\n我们使用来自 Hadoop 官方网站的发行版本 3.3.6 举例。我们准备将相关发行版本安装至文件系统的 /opt 目录下。\n\n首先从下载页面获得 Hadoop 的发行版文件：\n\n```shell\nwget \"https://dlcdn.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz\"\n```\n\n如果以上官方链接无法访问或者速度较慢，可以使用以下命令替代：\n\n```shell\nwget \"https://mirrors.bit.edu.cn/apache/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz\"\n```\n\n注意该压缩包较大（696MB），因此下载需要的时间可能较长。\n\n下载好压缩包后，解压到`/opt`目录。\n\n```\nsudo tar -zxvf hadoop-3.3.6.tar.gz -C /opt\n```\n\n\n## 二、Hadoop 配置\n\nHadoop 并非是单个软件，而是一系列大数据存储及处理的工具集合。所以，有必要针对常用的基础组件进行配置，以完成 Hadoop 环境的搭建。\n\n### 1. 配置环境变量\n\n安装 Hadoop 后，我们需要正确设置以下环境变量。可以将这些添加环境变量的命令添加至 ~/.bashrc 文件末尾，以避免每次登录时都需要执行，注意以下命令需要一次性复制和运行，不可以分多次：\n\n::: warning\n注意以下命令需要一次复制，不可分多次\n::: \n\n```shell\ncat << 'EOF' >> ~/.bashrc\nexport HADOOP_HOME=/opt/hadoop-3.3.6\nexport HADOOP_INSTALL=$HADOOP_HOME\nexport HADOOP_MAPRED_HOME=$HADOOP_HOME\nexport HADOOP_COMMON_HOME=$HADOOP_HOME\nexport HADOOP_HDFS_HOME=$HADOOP_HOME\nexport YARN_HOME=$HADOOP_HOME\nexport HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native\nexport PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin\nexport HADOOP_OPTS=\"-Djava.library.path=$HADOOP_HOME/lib/native\"\nEOF\n```\n\n然后执行`source ~/.bashrc`使配置生效或者直接重启shell。\n\n\n\n### 2. 配置Hadoop基础框架\n\n\n顺利运行 Hadoop 组件，我们有必要告诉 Hadoop 有关 Java 运行时环境（JRE）的位置信息。Hadoop 框架的基础配置文件位于 `./etc/hadoop/hadoop-env.sh` 中，我们只需要修改其中的 JAVA_HOME 行。如果你使用其他方式（比如非标准端口）通过 SSH 客户端连接到（本地）服务器，则需要额外修改 HADOOP_SSH_OPTS 行。\n\n首先我们接下来的操作都需要以`/opt/hadoop-3.3.6`作为<mark>当前路径</mark>，也就是说你需要先cd到`/opt/hadoop-3.3.6`，另外注意以下命令同样需要一次性复制和运行。\n\n\n\n::: warning\n注意下文中很多路径是`./etc/hadoop/hadoop-env.sh`，是一个相对于`/opt/hadoop-3.3.6`的相对路径，不是系统中的/`etc`\n另外注意以下命令同样需要一次复制，不可分多次\n::: \n\n```shell\ncat << 'EOF' >> ./etc/hadoop/hadoop-env.sh\nexport JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64\nexport HADOOP_SSH_OPTS=\"-p 22\"\nEOF\n```\n\n::: warning\n根据系统架构不同，Java 可执行文件的位置或名称是略有不同的。\n\n如果不是`/usr/lib/jvm/java-11-openjdk-amd64`，可能需要根据实际修改。\n::: \n\n### 3. 核心变量配置\n\nHadoop 生态的大多数组件采用 [.xml](https://www.runoob.com/xml/xml-syntax.html)文件的方式进行配置，linux的作者Linus Torvalds也曾对xml发出过“友好”的[评价](https://libquotes.com/linus-torvalds/quote/lbf3v5a)。它们采用了统一的格式：即将配置项填写在每个配置文件的 `<configuration> 与 </configuration>` 之间，每个配置项通过以下的方式呈现：\n\n```xml\n<property>\n<name>配置项名称</name>\n<value>配置值</value>\n</property>\n```\n\n首先需要修改`./etc/hadoop/core-site.xml`，我们需要配置`fs.defaultFS`为`hdfs://localhost/`，也就是说，需要把以下内容添加到`./etc/hadoop/core-site.xml`的`<configuration> </configuration> `之间。\n\n```xml\n<property>\n<name>fs.defaultFS</name>\n<value>hdfs://localhost/</value>\n</property>\n```\n\n### 4. 配置 HDFS（Hadoop 文件系统）\n\n为了支持Hadoop的运行，我们需要使用能支持分布式的文件系统，HDFS就是为了Hadoop使用的，你可以从[这里](https://hadoop.apache.org/docs/r1.0.4/cn/hdfs_design.html)找到HDFS的更多信息。\n\n在使用 Hadoop 文件系统（HDFS）之前，我们需要显式配置 HDFS，以指定 NameNode 与 DataNode 的存储位置。我们计划将 NameNode 与 DataNode 存储于本地文件系统上，即存放于 ~/hdfs 中：\n\n```sh\nmkdir -p ~/hdfs/namenode ~/hdfs/datanode\n```\n\n然后，修改`./etc/hadoop/hdfs-site.xml`，将以下内容放到该文件的`<configuration> </configuration>`之间。请注意<mark>需要替换其中的liyaning为你的ubuntu用户名</mark>\n\n```xml\n<property>\n<name>dfs.replication</name>\n<value>1</value>\n</property>\n\n<property>\n<name>dfs.name.dir</name>\n<value>/home/liyaning/hadoop/namenode</value>\n</property>\n\n<property>\n<name>dfs.data.dir</name>\n<value>/home/liyaning/hadoop/datanode</value>\n</property>\n```\n\n首次启动 Hadoop 环境之前，我们需要初始化 Namenode 节点数据，使用以下命令：\n\n```sh\nhdfs namenode -format\n```\n\n应该可以看到很多输出信息。\n\n### 5. 配置 MapReduce（由 YARN 驱动）\n\nMapReduce 是一种简单的用于数据处理的编程模型，YARN（Yet Another Resource Negotiator）是 Hadoop 的集群资源管理系统。\n\n\n将以下内容放到`./etc/hadoop/mapred-site.xml`的`<configuration> </configuration>`之间。\n\n```xml\n<property>\n<name>mapreduce.framework.name</name>\n<value>yarn</value>\n</property>\n<property>\n  <name>yarn.app.mapreduce.am.env</name>\n  <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6/</value>\n</property>\n<property>\n  <name>mapreduce.map.env</name>\n  <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6/</value>\n</property>\n<property>\n  <name>mapreduce.reduce.env</name>\n  <value>HADOOP_MAPRED_HOME=/opt/hadoop-3.3.6/</value>\n</property>\n```\n\n将以下内容放到`./etc/hadoop/yarn-site.xml`的`<configuration> </configuration>`之间。\n\n```xml\n<property>\n<name>yarn.nodemanager.aux-services</name>\n<value>mapreduce_shuffle</value>\n</property>\n<property>\n<name>yarn.resourcemanager.hostname</name>\n<value>localhost</value>\n</property>\n```\n\n\n### 6. 启动Hadoop集群\n\n使用以下命令:\n\n```sh\nstart-dfs.sh\nstart-yarn.sh\nmr-jobhistory-daemon.sh start historyserver\n```\n\n可能会出现ssh的提示`Are you sure you want to continue connecting (yes/no/[fingerprint])?`，直接`yes`就可以。\n\n这将启动以下守护进程：一个 namenode、一个辅助 namenode、一个 datanode（HDFS）、一个资源管理器、一个节点管理器（YARN）以及一个历史服务器（MapReduce）。为验证 Hadoop 相关服务启动成功，可以使用`jps`命令。\n\n\n你可以使用浏览器访问该主机的 9870 端口，以查看 HFS 的相关情况，如果一切正常，应该能在浏览器看到以下类似画面。\n\n![](https://img.peacesheep.xyz/20240318172816.png)\n\n大功告成！此时hadoop基础的组件已经安装完成。如果你发现某些组件未按预期工作，你可以在 Hadoop 安装目录的 ./logs 下找到各服务对应的运行日志进行排查。\n\n\n## 三、WordCount实验\n\n### 1.安装[maven](https://www.runoob.com/maven/maven-tutorial.html)\n\n\n首先使用命令`sudo apt-get install maven`。\n\n将配置文件复制到`~/.m2`目录：`mkdir ~/.m2 && cp /etc/maven/settings.xml ~/.m2`。\n\n编辑`~/.m2/settings.xml`文件，将以下内容添加到`<mirrors></mirrors>`中间。\n\n```xml\n<mirror>\n    <id>alimaven</id>\n    <name>aliyun maven</name>\n    <url>https://maven.aliyun.com/nexus/content/groups/public/</url>\n    <mirrorOf>central</mirrorOf>\n</mirror>\n```\n\n### 2. 创建项目\n\n使用以下命令，这将在当前文件夹创建一个workcount文件夹，请选择一个合适的路径来创建项目，<mark>注意替换其中的liyaning为你的姓名</mark>\n\n```sh\nmvn archetype:generate -DarchetypeGroupId=org.apache.maven.archetypes -DgroupId=cn.edu.seu.liyaning -DartifactId=wordcount -DpackageName=cn.edu.seu.liyaning -Dversion=1.0-SNAPSHOT -DinteractiveMode=false                 \n```\n\n### 3. 编辑pom.xml\n\n进入workcount文件夹，下面的操作可以直接使用vim或者gedit这样简单的文本编辑器，或者为了方便也可以使用VSCode之类的文本编辑器或者IDEA之类的Java IDE。\n\n\n\n编辑pom.xml，在`<dependencies></dependencies>`之间添添加如下内容：\n\n\n::: details \n```xml\n<dependency>\n  <groupId>commons-cli</groupId>\n  <artifactId>commons-cli</artifactId>\n  <version>1.2</version>\n</dependency>\n<dependency>\n  <groupId>commons-logging</groupId>\n  <artifactId>commons-logging</artifactId>\n  <version>1.2</version>\n</dependency>\n<dependency>\n  <groupId>org.apache.hadoop</groupId>\n  <artifactId>hadoop-mapreduce-client-jobclient</artifactId>\n  <version>2.8.5</version>\n  <scope>provided</scope>\n</dependency>\n<dependency>\n  <groupId>org.apache.hadoop</groupId>\n  <artifactId>hadoop-common</artifactId>\n  <version>2.8.5</version>\n  <scope>provided</scope>\n</dependency>\n```\n:::\n \n\n在`</dependencies>`后面增加如下内容：\n\n```xml\n<build>\n  <plugins>\n    <plugin>\n      <groupId>org.apache.maven.plugins</groupId>\n      <artifactId>maven-compiler-plugin</artifactId>\n      <configuration>\n        <source>1.7</source>\n        <target>1.7</target>\n      </configuration>\n    </plugin>\n  </plugins>\n</build>\n```\n\n使用`mvn clean install -DskipTests`同步依赖，或者直接使用IDE。\n\n新建`src/main/java/cn/edu/seu/{你的姓名}/WordCount.java`\n\n内容如下，就是给出的word文档里面的原文没有修改，注意替换第一行的包名：\n\n::: details \n```java\npackage cn.edu.seu.liyaning;\n\nimport java.io.IOException;\nimport java.util.StringTokenizer;\n\nimport org.apache.hadoop.conf.Configuration;\nimport org.apache.hadoop.fs.Path;\nimport org.apache.hadoop.io.IntWritable;\nimport org.apache.hadoop.io.Text;\nimport org.apache.hadoop.mapreduce.Job;\nimport org.apache.hadoop.mapreduce.Mapper;\nimport org.apache.hadoop.mapreduce.Reducer;\nimport org.apache.hadoop.mapreduce.lib.input.FileInputFormat;\nimport org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;\nimport org.apache.hadoop.util.GenericOptionsParser;\n\npublic class WordCount {\n    public static class TokenizerMapper\n            extends Mapper<Object, Text, Text, IntWritable>{\n\n        private final static IntWritable one = new IntWritable(1);\n        private Text word = new Text();\n\n        public void map(Object key, Text value, Context context\n        ) throws IOException, InterruptedException {\n            StringTokenizer itr = new StringTokenizer(value.toString());\n            while (itr.hasMoreTokens()) {\n                word.set(itr.nextToken());\n                context.write(word, one);\n            }\n        }\n    }\n\n    public static class IntSumReducer\n            extends Reducer<Text,IntWritable,Text,IntWritable> {\n        private IntWritable result = new IntWritable();\n        public void reduce(Text key, Iterable<IntWritable> values,\n                           Context context\n        ) throws IOException, InterruptedException {\n            int sum = 0;\n            for (IntWritable val : values) {\n                sum += val.get();\n            }\n            result.set(sum);\n            context.write(key, result);\n        }\n    }\n\n    public static void main(String[] args) throws Exception {\n        Configuration conf = new Configuration();\n        String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();\n        if (otherArgs.length < 2) {\n            System.err.println(\"Usage: wordcount <in> [<in>...] <out>\");\n            System.exit(2);\n        }\n        Job job = Job.getInstance(conf, \"word count\");\n        job.setJarByClass(WordCount.class);\n        job.setMapperClass(TokenizerMapper.class);\n        job.setCombinerClass(IntSumReducer.class);\n        job.setReducerClass(IntSumReducer.class);\n        job.setOutputKeyClass(Text.class);\n        job.setOutputValueClass(IntWritable.class);\n        for (int i = 0; i < otherArgs.length - 1; ++i) {\n            FileInputFormat.addInputPath(job, new Path(otherArgs[i]));\n        }\n        FileOutputFormat.setOutputPath(job,\n                new Path(otherArgs[otherArgs.length - 1]));\n        System.exit(job.waitForCompletion(true) ? 0 : 1);\n    }\n}\n\n```\n:::\n\n\n\n\n然后使用命令`mvn clean install -DskipTests`打包，应该可以看到当前目录的target文件夹下多了一个wordcount-1.0-SNAPSHOT.jar文件。\n\n### 4. 在HDFS中创建一个文本文件\n\n```sh\nhdfs dfs -mkdir /miao # 创建文件夹\nhdfs dfs -ls /  # 应该可以看到miao这个文件夹\n\n```\n\n在本地创建一个miao.txt，随便写一些内容，原版实验手册中给出的文本内容如下：\n\n```txt\nLong long ago, there is one cat that is expected at using the cat utility on Linux. One day, it saw a spring in the spring in spring. He is astonished and laughing to death.\n\nYears later, people mark the 9 May as the Dying Cat Linux Day to celebrate the people who is struggling at using Linux.\n\nWritten by a people who loves cat.\n\nPlease add your own student id and name here:\n1845** Zhang Shan\n```\n\n然后把这个文件放到hdfs中去：\n\n```sh\nhdfs dfs -put miao.txt /miao/\nhdfs dfs -ls /miao  # 应该可以看到miao.txt\n```\n\n### 5. 使用Hadoop运行编译的jar文件\n\n注意替换其中的文件真实路径以及包名：\n```sh\nhadoop jar ~/wordcount/target/wordcount-1.0-SNAPSHOT.jar cn.edu.seu.liyaning.WordCount /miao/miao.txt /miao/output/\n```\n\n等待大概1分钟之后运行完毕，使用`hdfs dfs -ls /miao/output`命令可以看到有一个`_SUCCESS`文件和一个`part-r-00000`文件。\n\n使用`hdfs dfs -cat /miao/output/part-r-00000`可以看到运行的结果。\n\n![](https://img.peacesheep.xyz/20240318211124.png)\n\n\n\nBingo！第一个小实验完成。\n\n## 四、KMeans实验\n\n### 1. 准备相关文件\n\n首先解压KMeans.zip。\n\n```sh\nunzip KMeans.zip\ncd KMeans/\n```\n\n使用`java -jar ProcessCorpus.jar`将文本文件转化成词向量，该程序会要求你输入一些信息，可以按照以下内容输入：\n\n\nEnter the directory where the corpus is located: `20_newsgroups`\n\nEnter the name of the file to write the result to: `vectors`\n\nEnter the max number of docs to use in each subdirectory: `100`\n\nHow many of those words do you want to use to process the docs? `10000`\n\n\n使用`java -jar GetCentroids.jar`初始化集群起始点，该程序会要求你输入一些信息，可以按照以下内容输入：\n\n\nEnter the data file to select the clusters from: `vectors`\n\nEnter the name of the file to write the result to: `clusters`\n\nEnter the number of clusters to select: `20`\n\n然后把刚刚创建的文件复制到HDFS中：\n\n```sh\nhdfs dfs -mkdir /data\nhdfs dfs -mkdir /clusters\nhdfs dfs -copyFromLocal vectors /data\nhdfs dfs -copyFromLocal clusters /clusters\n```\n\n### 2. 构建项目\n\n首先使用如下命令创建项目，请注意<mark>需要替换其中的liyaning为你的ubuntu用户名</mark>。\n\n```sh\nmvn archetype:generate -DarchetypeGroupId=org.apache.maven.archetypes -DgroupId=cn.edu.seu.liyaning -DartifactId=kmeans -DpackageName=cn.edu.seu.liyaning -Dversion=1.0-SNAPSHOT -DinteractiveMode=false\n```\n\n然后编辑`pom.xml`，操作方法同wordcount中的`pom.xml`。\n\n再然后，把KMeans文件夹中，`MapRedKMeans`下的所有文件复制到`src/main/java/cn/edu/seu/XXX/`，可能根据需要修改以下命令：\n\n```sh\ncp ../MapRedKMeans/* src/main/java/cn/edu/seu/liyaning/\n ```\n\n 然后使用`mvn clean install -DskipTests`构建项目，应该可以看到当前目录的target文件夹下多了一个kmeans-1.0-SNAPSHOT.jar文件。\n \n### 3. 运行项目\n\n使用命令提交到Hadoop运行：\n\n```sh\nhadoop jar target/kmeans-1.0-SNAPSHOT.jar KMeans /data /clusters 3\n```\n\n其中3是kmeans的迭代次数，可以自己定义，当然次数越多需要的时间可能也越久。\n\n执行完毕后，使用命令将结果从HDFS拷贝回本地，注意需要先cd到解压出来的KMeans文件夹，方便后续检查结果：\n\n```sh\ncd KMeans # 根据实际替换为你的解压出来的文件夹路径\nhdfs dfs -copyToLocal /clustersXXX/part-r-00000 # 替换XXX为你的迭代次数\n```\n\n### 4. 检查结果\n\n使用命令`java -jar GetDistribution.jar`运行检查结果的jar文件。按照如下信息输入：\n\n\nEnter the file with the data vectors: `vectors`\nEnter the name of the file where the clusers are loated: `part-r-00000`\n\n\n你应当能看到以下结果信息：\n\n![](https://img.peacesheep.xyz/20240318220907.png)\n\n\n## Done!\n\n大功告成！你做的很棒，你已经完成了云计算的第二次实验。在本次实验中，你安装并配置了Hadoop以及HDFS等相关配套设施，你使用Hadoop完成了wordcount和KMeans两个小实验，现在你可以完善一下你的实验报告准备提交，同时休息一下看看窗外的风景，晚餐加个鸡腿奖励一下自己。\n\n::: tip 参考链接\n[在 Ubuntu 22.04 LTS 上搭建 Hadoop 环境](https://dgideas.net/2022/install-hadoop-on-ubuntu-22-04/)\n\n[Hadoop官网](https://hadoop.apache.org/)\n:::",
+    "categories": [
+      "课程",
+      "云计算"
+    ],
+    "tags": [],
+    "publishedAt": "2024-03-17 00:33:33",
+    "sourcePath": "04. 课程/04. 云计算/01. 实验2手册.md"
+  },
+  {
+    "slug": "d45844",
+    "legacyPermalink": "/pages/d45844/",
+    "title": "ssh聊天室",
+    "description": "受到jyy老师的启发,决定做一个ssh聊天室，尽管我的个人网站已经实现了实时聊天功能，但是在某些情况下，例如给服务器装系统，没有GUI的linux上使用还是很不方便，因此决定做一个ssh聊天室。",
+    "contentMarkdown": "受到[jyy老师的启发](https://jyywiki.cn/OS/Chatroom.md),决定做一个ssh聊天室，尽管我的个人网站已经实现了实时聊天功能，但是在某些情况下，例如给服务器装系统，没有GUI的linux上使用还是很不方便，因此决定做一个ssh聊天室。\n\n\n\n\n::: tip 参考链接\n[聊天室实现原理](https://jyywiki.cn/OS/Chatroom.md)\n:::\n\n",
+    "categories": [
+      "项目",
+      "随手写的小项目"
+    ],
+    "tags": [],
+    "publishedAt": "2024-03-18 23:22:54",
+    "sourcePath": "03. 项目/04. 随手写的小项目/01. ssh聊天室.md"
+  },
+  {
+    "slug": "54010f",
+    "legacyPermalink": "/pages/54010f/",
+    "title": "Towards MoE Deployment：Mitigating Inefficiencies in Mixture-of-Expert (MoE) Inference",
+    "description": "1. 从理论上讲，MoETransformer 与基线密集模型相比执行的 FLOP 次数相似，但实际上它们的速度要慢得多。一个原因是需要AlltoAll通信，但不仅仅这一个原因。 2. 存储专家内存消耗过大。 3. 静态门控的低效率。每个专家接受的token数量是一样的，如果多了就会被丢弃，如果少了就会用0填充。",
+    "contentMarkdown": "## 问题\n\n1.  从理论上讲，MoETransformer 与基线密集模型相比执行的 FLOP 次数相似，但实际上它们的速度要慢得多。一个原因是需要AlltoAll通信，但不仅仅这一个原因。\n2.  存储专家内存消耗过大。\n3.  静态门控的低效率。每个专家接受的token数量是一样的，如果多了就会被丢弃，如果少了就会用0填充。\n\n## 分析\n\n\n1.  专家具有稀疏性，有的专家根本就没有激活过几次，但也要放在内存。\n2.  通过机器翻译任务，发现专家稀疏性具有很强的时间局部性。也就是说，在一个时间段内，很多专家连续处于激活状态。\n\n## 改进\n\n1.  动态门控优化。\n\n    为了解决所有的专家都必须接受相同数量的token，造成多了的丢弃少了的补0,首先把token按照分给专家的顺序排序，分给第一个专家的全部放在开头，然后是放在第二个专家的token，依次类推，然后再给专家一个size表，从而实现动态获取token。\n\n    效果：LM任务中内存占用减少79.6%，MT任务中减少44.2%。并且LM任务中静态门控batch\\_size最大为8，动态门控为64。MT任务中静态2，动态96。\n2.  专家缓冲\n\n    把活跃的专家放到GPU中，如果GPU中的专家已经满，则使用FIFO算法把已经很长时间不活跃的专家放到CPU上。\n3.  负载均衡\n\n    token分布高度不平衡，根据历史数据中的平均工作负载对专家进行排序，负载越小的专家分给越少的GPU资源。\n\n    效果：在LM任务中表现好，在MT任务中解码器效果差。\n\n\n::: tip 论文链接\n[arxiv](https://arxiv.org/abs/2303.06182)\n:::",
+    "categories": [
+      "论文阅读",
+      "MOE"
+    ],
+    "tags": [],
+    "publishedAt": "2024-03-28 20:22:51",
+    "sourcePath": "06. 论文阅读/01. MOE/01. Towards MoE Deployment：Mitigating Inefficiencies in Mixture-of-Expert (MoE) Inference.md"
+  },
+  {
+    "slug": "f3ae56",
+    "legacyPermalink": "/pages/f3ae56/",
+    "title": "nvidia驱动、cuda安装常见报错与解决方案",
+    "description": "驱动版本不适合当前的linux内核，可以找一下是否有相关的patch补丁，但是比较麻烦，最好看下cuda有没有更新版，例如cuda11.4有11.4.1、11.4.2、11.4.3、11.4.4。后面的可能就可以了。",
+    "contentMarkdown": "### 1. ERROR: Unable to load the 'nvidia-drm' kernel module.\n\n```bash\nsudo apt-get purge nvidia*\nsudo apt-get autoremove\n```\n\n###  2. error: 'struct task_struct' has no member named 'state'; did you mean 'stats'?\n\n驱动版本不适合当前的linux内核，可以找一下是否有相关的patch补丁，但是比较麻烦，最好看下cuda有没有更新版，例如cuda11.4有11.4.1、11.4.2、11.4.3、11.4.4。后面的可能就可以了。\n\n### 3. ERROR: An NVIDIA kernel module ‘XXX’ appears to already be loaded in your kernel\n\n1. 查看并结束相应进程\n\n使用`lsof`命令，如果没有lsof则先用apt安装 `sudo apt install lsof`。\n\n```sh\nlsof /dev/nvidia*\nCOMMAND  PID USER   FD   TYPE  DEVICE SIZE/OFF  NODE NAME\nsbatchd 3680 root    5u   CHR 195,255      0t0 56434 /dev/nvidiactl\n\nkill -9 3680\n```\n\n2. 卸载模块\n   \n```sh\nrmmod nvidia_uvm  # 不一定是这个模块，反正都是nvidia开头\n```\n\n如果卸载不掉可以先不管，把进程结束掉，确认`lsof /dev/nvidia*`没有输出了，再重新装一下试试。\n\n\n### 4. ERROR: Unable to find the module utility `modprobe`; please make sure you have the package 'module-init-tools' or 'kmod' installed.  If you do have 'module-init-tools' or 'kmod' installed, then please check that `modprobe` is in your PATH.\n\n```sh\nsudo apt-get install kmod\nexport PATH=$PATH:/usr/sbin/modprobe\n```\n\n\n## 其他一些莫名的问题，可以尝试的思路\n\n1. Disable Nouveau kernel driver：https://askubuntu.com/questions/841876/how-to-disable-nouveau-kernel-driver\n\n```bash\nsudo nano /etc/modprobe.d/blacklist-nouveau.conf\nblacklist nouveau\noptions nouveau modeset=0\nsudo update-initramfs -u\nsudo reboot\n```\n\n\n::: tip 参考链接\n[ERROR: An NVIDIA kernel module ‘nvidia-uvm‘ appears to already be loaded in your kernel](https://blog.csdn.net/kuku123465/article/details/130250940)\n:::",
+    "categories": [
+      "教程",
+      "错误解决"
+    ],
+    "tags": [],
+    "publishedAt": "2024-03-30 21:14:39",
+    "sourcePath": "05. 教程/05. 错误解决/01. cuda安装常见报错与解决方案.md"
+  },
+  {
+    "slug": "033951",
+    "legacyPermalink": "/pages/033951/",
+    "title": "tmux配置文件，解决鼠标不能用等问题",
+    "description": "tmux配置文件一般位于~/.tmux.conf，默认是没有这个文件的，需要自己创建，修改配置之后，需要使用tmux source-file ~/.tmux.conf使配置生效 。",
+    "contentMarkdown": "## 配置文件位置\n\ntmux配置文件一般位于`~/.tmux.conf`，默认是没有这个文件的，需要自己创建，修改配置之后，需要使用`tmux source-file ~/.tmux.conf`使配置生效 。\n\n\n## 常用配置项目\n\n```bash\nset -g default-terminal \"screen-256color\"  # 显示颜色，不然会很多文字没有颜色\nset -g mouse on # 允许使用鼠标滚动\n\nset-option -g default-shell /bin/bash # 设置默认终端为bash，当然你也可以用其他的，例如zsh\nset-option -g history-limit 20000 # 保存历史记录\n```\n\n## 其他事项\n\n1. 关于复制粘贴，选中必须按住shift，且不能用ctrl+c复制或者ctrl+v粘贴，目前暂未找到更好的方案，如果有人知道怎么办希望能不吝赐教。",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-01 22:01:46",
+    "sourcePath": "100. 常用操作/02. 常用命令与配置文件/03. tmux配置文件.md"
+  },
+  {
+    "slug": "2dc2ba",
+    "legacyPermalink": "/pages/2dc2ba/",
+    "title": "关于MAC上PPT无法同时使用演讲者视图和放映视图（腾讯会议）的解决方案",
+    "description": "在windows上，可以打开PPT放映，然后开启演讲者视图，腾讯会议共享全屏的PPT放映窗口，本机看到演讲者视图。 但是在MAC上，只有keynote可以做到，Microsoft PowerPoint和WPS都不行。",
+    "contentMarkdown": "## 问题\n\n在windows上，可以打开PPT放映，然后开启演讲者视图，腾讯会议共享全屏的PPT放映窗口，本机看到演讲者视图。\n但是在MAC上，只有keynote可以做到，Microsoft PowerPoint和WPS都不行。\n\n## 解决方案\n\n这个问题的一个解决方案是，虚拟出一个显示器，一开始想自己写，但是没有什么好思路，我想应该有人写过，于是到Github以“virtual monitor mac”搜索，果然找到了一个符合要求的。\n这个软件就是[DeskPad](https://github.com/Stengo/DeskPad)，可以在mac上模拟出一台显示器，经过本人测试确认可以做到腾讯会议共享放映视图，自己看演讲者视图。\n\n虚拟出来的显示器：\n\n![](https://img.peacesheep.xyz/2f69db37dc6492ddbff2b66629f9f9ad.png)\n![](https://img.peacesheep.xyz/cbc086158eff790a2404fc1451ad139e_720.png)\n\n它的安装非常简单，只需要用homebrew就可以：`brew install deskpad`。\n\nWPS相关设置：\n\n![](https://img.peacesheep.xyz/e330ae8cc44ac9aa3f2c354764059299_720.png)",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-14 15:50:55",
+    "sourcePath": "05. 教程/06. 使用技巧/01. 关于MAC上PPT无法同时使用演讲者视图和放映视图(腾讯会议)的解决方案.md"
+  },
+  {
+    "slug": "19eab7",
+    "legacyPermalink": "/pages/19eab7/",
+    "title": "自己写一个docker(1)-cgroup介绍与使用",
+    "description": "Cgroup（Control Group）是Linux内核提供的一种资源管理和限制机制，用于对进程进行分组并对分组内的进程进行资源限制、优先级调整等操作。",
+    "contentMarkdown": "## 一. 是什么\n\nCgroup（Control Group）是Linux内核提供的一种资源管理和限制机制，用于对进程进行分组并对分组内的进程进行资源限制、优先级调整等操作。\n\n例如，他可以限制一个进程使用的内存数量，CPU数量等等。cgroup目前有两个版本，分别是v1和v2。本文所讲内容及实现均以cgroup v2为基础。\n\n\n\n## 二. 使用前的一些检查\n\nLinux内核有一个很大的模块叫VFS（Virtual File System）。VFS能够把具体的文件系统细节隐藏起来，给用户态进程提供一个文件系统API接口。cgrpus与VFS之间衔接的部分称之为cgroup文件系统。\n\n\n### 查看系统是否支持cgroup v2\n\ncgroup 版本取决于正在使用的 Linux 发行版和操作系统上配置的默认 cgroup 版本。 要检查你的发行版使用的是哪个 cgroup 版本，请在该节点上运行 stat -fc %T /sys/fs/cgroup/ 命令：\n\n```sh\nstat -fc %T /sys/fs/cgroup/\n```\n\n对于 cgroup v2，输出为 cgroup2fs。\n\n对于 cgroup v1，输出为 tmpfs。\n\n\n### 查看cgroup v2可管理的系统资源类型\n\n```sh\ncat /sys/fs/cgroup/cgroup.controllers \n```\n\n可以看到类似于如下输出:`cpuset cpu io memory hugetlb pids rdma misc`。\n\n###  查看cgroup2开启的控制器\n以上仅仅是可以管理的，不代表实际开启了这些管理，查看cgroup2开启的控制器需要使用：\n\n```sh\ncat /sys/fs/cgroup/cgroup.subtree_control \n```\n\n## 三. 如何实现、怎么用\n\n我看到cgroup的介绍，一般都是说对XX资源进行限制，那么想解决一个问题，例如我想让main进程仅能使用1G的内存，应该怎么做呢？\n\nlinux有一切皆文件的设计理念，cgroup也是如此。在`/sys/fs/cgroup/`目录，可以看到一些文件，这些就是cgroup的一些相关配置。例如，`cgroup.controllers`就是表示当前cgroup的可用控制器。\n\n### 1. 创建cgroup\n我们在这个`/sys/fs/cgroup/`这个目录下新建一个文件夹`mkdir test-cgroup`。然后再进入到这个文件夹中，可以看到已经有一些文件了，这些文件就是我们创建的cgroup的相关配置。\n\n\n### 2. 对资源进行限制\n```sh\necho \"50000 100000\" > cpu.max\n# cat cpu.max\n50000 100000\n```\n\n这个含义是任务组test-cgroup配制为每个100毫秒周期最多执行50毫秒，也就是本cgroup管理的进程在单核CPU上的使用率不会超过50%。\n\n::: tip\n要获取所有的限制项，请参阅[Maximizing Resource Utilization with cgroup2](https://facebookmicrosites.github.io/cgroup2/docs/overview.html)。\n:::\n\n### 3. 将进程移动到对应的cgroup\n\n```sh\necho {pid} > cgroup.procs\n```\n\n表示把进程pid添加到当前的cgroup中。其中0是一个特殊值，表示当前进程。例如，把当前进程加入到`cgroup`中只需要`echo 0 > cgroup.procs`。\n\n### 4. 删除一个cgroup\n\n```sh\nrmdir /sys/fs/cgroup/{你的cgroup的名字}\n```\n注意必须用`rmdir`，使用`rm -rf`是不行的，即便是root用户也会被提示没有权限。\n\n\n::: tip 参考链接\n[cgroup v2 使用示例](https://blog.csdn.net/lizhijun_buaa/article/details/131761567)\n\n[Cgroup使用介绍](https://zhuanlan.zhihu.com/p/651405353)\n\n[关于 cgroup v2](https://kubernetes.io/zh-cn/docs/concepts/architecture/cgroups/)\n:::",
+    "categories": [
+      "教程",
+      "docker"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-16 17:56:31",
+    "sourcePath": "03. 项目/05. docker/02. cgroup介绍与使用.md"
+  },
+  {
+    "slug": "65c671",
+    "legacyPermalink": "/pages/65c671/",
+    "title": "ubuntu常用命令",
+    "description": "方法一：sudo usermod -aG sudo 用户名。",
+    "contentMarkdown": "## 1. 赋予用户root权限\n\n\n方法一：`sudo usermod -aG sudo 用户名`。\n\n方法二：使用`visudo`命令，<mark>不要使用vim等普通文本编辑器</mark>，编辑`/etc/sudoers`，添加`用户名 ALL=(ALL:ALL) ALL`，这表示用户可以执行任何命令。\n\n## 2. 查看linux内核版本\n\n`uname -r`\n\n",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-22 15:50:41",
+    "sourcePath": "100. 常用操作/02. 常用命令与配置文件/04. ubuntu常用命令.md"
+  },
+  {
+    "slug": "d81186",
+    "legacyPermalink": "/pages/d81186/",
+    "title": "自己写一个docker(2)-文件系统的处理",
+    "description": "主要核心是一个 syscall(SYSpivotroot, newroot, putpld);这个系统调用。",
+    "contentMarkdown": "## 核心操作\n\n主要核心是一个` syscall(SYS_pivot_root, new_root, put_pld);`这个系统调用。\n\npivot_root系统调用用于切换根目录，需要两个参数：新根目录（new_root）和旧根目录（put_old）。在调用 pivot_root 后，新根目录 new_root 成为新的 /（根目录），而当前的根目录（即调用前的 /）被移动到 put_old 指定的位置。\n\n通过使用 pivot_root，可以将原始的根文件系统移动到一个安全的位置（通常是新根目录内的一个子目录），然后将一个全新的文件系统设为根文件系统。这种做法可以有效隔离原始根文件系统，防止容器内的应用程序访问或修改关键系统文件。\n\n## 前置操作\n\n```sh\nmount(NULL, \"/\", NULL, MS_REC | MS_PRIVATE, NULL);\n```\n\n将当前的根文件系统（以及所有挂载的子文件系统）重新挂载为 MS_PRIVATE。这样做的目的是防止挂载事件传播到或从其他挂载命名空间.\n\n隔离挂载事件：将挂载点设置为 MS_PRIVATE 可以防止挂载事件在这个挂载点与外部（其他挂载点）之间传播。这意味着在该挂载点上进行的任何挂载或卸载操作不会影响到系统的其他部分，也不会受到外部影响。\n\n安全性和隔离性：在容器和其他隔离环境中，这种挂载隔离确保了更高级别的安全性和稳定性。容器内部的改变不会意外地影响到宿主机，反之亦然。\n\n## 将指定的根挂载目录转换为一个挂载点\n\n这句话说的有点绕。用户肯定会为我们的容器指定一个新的目录，用于当做容器内部的根目录，但是，pivot_root要求new_root必须是一个挂载点，不能只是一个普通目录。所以我们必须创建一个挂载点，并且让这个挂载点指向用户指定的目录。\n\n\n```sh\nstring mount_dir = \"/tmp/tmp.XXXXXX\";\nmkdtemp(mount_dir.data());\nmount(config.mount_dir.data(), mount_dir.data(), NULL, MS_BIND | MS_PRIVATE, NULL);\n```\n\n## 创建一个目录用于挂载当前的根目录\n\n```sh\nstring old_mount_basename =\"/oldroot.XXXXXX\";\nstring old_mount_dir = mount_dir + old_mount_basename;\nmkdtemp(old_mount_dir.data());\n```\n\n## 切换根目录\n\n```sh\nsyscall(SYS_pivot_root, mount_dir.data(), old_mount_dir.data());\n```\n\n## 删除原来的目录\n\n```sh\nchdir(\"/\"); //取消挂载原来的根目录。因为旧的目录就挂载在新的根目录下面，因此先切换到新的根目录\numount2(old_mount_basename.data(), MNT_DETACH);\nrmdir(old_mount_basename.data());\n```\n\n",
+    "categories": [
+      "教程",
+      "docker"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-25 18:23:01",
+    "sourcePath": "03. 项目/05. docker/03. 自己写一个docker(2)-文件系统的处理.md"
+  },
+  {
+    "slug": "4a708c",
+    "legacyPermalink": "/pages/4a708c/",
+    "title": "自己写一个docker(3)-子进程的处理",
+    "description": "",
+    "contentMarkdown": "",
+    "categories": [
+      "教程",
+      "docker"
+    ],
+    "tags": [],
+    "publishedAt": "2024-04-25 18:28:11",
+    "sourcePath": "03. 项目/05. docker/04. 自己写一个docker(3)-子进程的处理.md"
+  },
+  {
+    "slug": "196a56",
+    "legacyPermalink": "/pages/196a56/",
+    "title": "nodejs、yarn安装",
+    "description": "从nodejs官网 下载安装包安装。",
+    "contentMarkdown": "## Windows\n\n### 1. 安装nodejs:\n\n从[nodejs官网](https://nodejs.org/en/download/prebuilt-installer) 下载安装包安装。\n\n### 2. 配置nodejs相关路径\n\n```bash\nnpm config set prefix \"D:\\nodejs\\node_global\"\nnpm config set cache \"D:\\nodejs\\node_cache\"\n\n```\n然后将`D:\\nodejs\\node_global`添加到PATH环境变量。\n\n### 3. yarn安装\n\n\n```bash\nnpm install -g yarn@latest\n```\n\n### 4. 配置yarn相关路径\n\n```bash\nyarn config set prefix \"D:\\nodejs\\yarn-data\"\nyarn config set global-folder \"D:\\nodejs\\yarn-global\"\nyarn config set cache-folder \"D:\\nodejs\\yarn-cache\"\nyarn config set link-folder \"D:\\nodejs\\yarn-link\"\n\n```\n\n## Linux\n\n### 1. 安装nodejs:\n\n::: warning\n不要使用apt安装，版本太老！\n:::\n\n到[nodejs官网](https://nodejs.org/en/download/package-manager)直接看安装命令，比如使用fnm和22版本的node，命令如下：\n\n```bash\ncurl -fsSL https://fnm.vercel.app/install | bash\nfnm use --install-if-missing 22 # 版本根据需要修改\n```\n\n如果第一行命令提示`Could not infer shell type. Please set up manually.`，可以先下载那个文件，然后手动编辑sh文件里面的setup_shell函数，直接保留你想要的那个shell的命令就可以。\n\n### 2. 配置nodejs相关路径\n\n```bash\nnpm config set prefix \"~/nodejs/node_global\"\nnpm config set cache \"~/nodejs/node_cache\"\n```\n\n",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2024-06-03 15:55:29",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/13. nodejs、yarn安装.md"
+  },
+  {
+    "slug": "d7cfcc",
+    "legacyPermalink": "/pages/d7cfcc/",
+    "title": "openkylin国产麒麟操作系统安装zerotier",
+    "description": "对于常见的linux发行版，例如ubuntu，可以直接使用以下方法安装：",
+    "contentMarkdown": "## 常见发行版的安装\n\n对于常见的linux发行版，例如ubuntu，可以直接使用以下方法安装：\n\n\n1. 在线安装zerotier\n\n```bash\ncurl -s https://install.zerotier.com/ | sudo bash\n```\n\n2. 添加开机自启\n\n```bash\nsudo systemctl enable zerotier-one.service\n```\n\n3. 启动zerotier-one.service\n\n```bash\nsudo systemctl start zerotier-one.service\n```\n\n4. 加入网络\n```bash\nsudo zerotier-cli join xxxx\n```\n\n## openkylin的安装\n\n对于特殊的linux发行版，比如国产麒麟操作只能从源码安装。\n\n1. 首先从gihub克隆代码\n\n```bash \ngit clone https://github.com/zerotier/ZeroTierOne\n```\n\n2. 安装编译需要的依赖\n\n```bash\nsudo apt-get install nlohmann-json-dev libssl-dev\n\n```\n\n3. 安装rust\n\n```bash\ncurl https://sh.rustup.rs -sSf | sh\n```\n\n4. 编译安装\n\n```bash\nmake\n```\n\n::: warning\n不可以用cmake，直接make就可以，否则可能会出错\n:::\n\n\n",
+    "categories": [
+      "常用操作",
+      "环境安装与配置"
+    ],
+    "tags": [],
+    "publishedAt": "2024-06-13 21:07:08",
+    "sourcePath": "100. 常用操作/01. 环境安装与配置/12. openkylin麒麟操作系统安装zerotier.md"
+  },
+  {
+    "slug": "56ef21",
+    "legacyPermalink": "/pages/56ef21/",
+    "title": "前端处理POST类型的sse请求",
+    "description": "想要编写一个类似于ChatGPT的聊天助手，但是不知道怎么处理SSE请求。问了GPT只给出了用EventSource的方法，但是这个只支持GET请求，由于发送的消息内容可能很长，因此使用了POST请求。为了达到目的，最后只能手写了fetch获取数据后进行处理。",
+    "contentMarkdown": "想要编写一个类似于ChatGPT的聊天助手，但是不知道怎么处理SSE请求。问了GPT只给出了用EventSource的方法，但是这个只支持GET请求，由于发送的消息内容可能很长，因此使用了POST请求。为了达到目的，最后只能手写了fetch获取数据后进行处理。\n\n<!-- more -->\n\n```typescript\nfetch(\"/api/chat-message/\", {\n      method: \"POST\",\n      headers: {\n        \"Content-Type\": \"application/json\",\n      },\n      body: JSON.stringify({\n        message: this.newMessage.value,\n      }),\n    })\n      .then((response) => {\n        if (response.body === null) {\n          throw new Error(\"Response body is null\");\n        }\n     \n        const reader = response.body.getReader();\n        return new ReadableStream({\n          start(controller) {\n            function push() {\n              reader.read().then(({ done, value }) => {\n                if (done) {\n                  controller.close();\n                  return;\n                }\n                const text = new TextDecoder(\"utf-8\").decode(value);\n                console.log(text)\n                processText(text);\n                push();\n              });\n            }\n            push();\n          }\n        });\n      })\n      .catch((err) => {\n        alert(\"发送消息失败：\" + err.message);\n      });\n```\n\n主要流程如下：\n\n1. 使用`fetch`函数发送http  POST请求。\n\n```typescript\nfetch(\"/api/chat-message/\", {\n      method: \"POST\",\n      headers: {\n        \"Content-Type\": \"application/json\",\n      },\n      body: JSON.stringify({\n        message: this.newMessage.value,\n      }),\n    })\n```\n\n2. 使用一个reader，从body中直接读取原始二进制数据。\n\n```typescript\n const reader = response.body.getReader();\n```\n\n3. 读取消息\n\n```typescript\n return new ReadableStream({\n          start(controller) {\n            function push() {\n              reader.read().then(({ done, value }) => {\n                if (done) {\n                  controller.close();\n                  return;\n                }\n                const text = new TextDecoder(\"utf-8\").decode(value);\n                console.log(text)\n                processText(text);\n                push();\n              });\n            }\n            push();\n          }\n        });\n```\n\n4. 在processText函数中处理消息\n\n```typescript\n   function processText(text) {\n                const lines = text.split(\"\\n\\n\");\n                lines.forEach(line => {\n                    if (line.startsWith(\"data: \")) {\n                        const resp = JSON.parse(line.slice(6));\n                        //在这里处理消息,每次收到消息都会调用这个函数\n                        \n                    }\n                });\n            }\n```\n\n",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2024-06-29 01:55:23",
+    "sourcePath": "05. 教程/01. web/03. 前端处理POST类型的sse请求.md"
+  },
+  {
+    "slug": "f34d0d",
+    "legacyPermalink": "/pages/f34d0d/",
+    "title": "关于\"暑期集训\"目录的说明",
+    "description": "有一些atcoder beginer contest的题目，自己用slidev做了一些PPT，放在博客里作为部分题目的题解。",
+    "contentMarkdown": "<!-- more -->\n\n\n有一些atcoder beginer contest的题目，自己用slidev做了一些PPT，放在博客里作为部分题目的题解。",
+    "categories": [
+      "竞赛",
+      "程序设计",
+      "暑期集训"
+    ],
+    "tags": [],
+    "publishedAt": "2024-07-25 00:20:54",
+    "sourcePath": "02. 竞赛/02. 程序设计/100. 暑期集训/01. 说明.md"
+  },
+  {
+    "slug": "6b6f1b",
+    "legacyPermalink": "/pages/6b6f1b/",
+    "title": "7月22日-ABC149",
+    "description": "拼接两个字符串$T$和$S$。",
+    "contentMarkdown": "## \\[ABC149-A\\]字符串\n\n<br>\n\n\n### 题意\n\n拼接两个字符串$T$和$S$。\n\n### 解法\n\n1. 直接定义两个string类型变量$S$和$T$并输入。\n2. 输出$T+S$即可。\n\n---\n\n## \\[ABC149-B\\]贪婪的高桥\n\n\n<br>\n\n\n### 题意\n\n第一个人有A块饼干，第二个人有B块饼干。第一个人会先吃自己的，把自己吃完再吃第二个人的。问K次之后两个人分别有多少饼干。\n\n\n### 解法\n\n\n分类讨论即可。\n\n如果$K \\leq A$，直接输出$A-K$和$B$，即第一个人吃掉自己的$K$块饼干。\n如果$A < K \\leq A+B$，则输出$0$和$B-(K-A)$，即第一个人吃完自己的饼干，又吃了第二个人$K-A$块饼干。\n\n如果$K > A+B$，直接输出$0$和$0$，因为两个人的饼干都被吃完了。\n\n\n\n\n---\n\n## \\[ABC149-C\\]下一个质数\n\n\n<br>\n\n\n### 题意\n\n找到大于或等于$X$的最小质数。\n\n### 解法\n\n\n从$X$开始往后枚举，判断是不是质数。\n\n判断一个数字$X$是否是质数的方法为：令$i$从$2$一直枚举到$\\sqrt{X}$，如果$X$除以$i$的余数为0，则$X$不是质数。如果一直枚举到$\\sqrt{X}$都没有出现能整除的情况，则$X$是质数。\n\n拓展：素数筛，本题用不到，感兴趣的同学可以了解。\n\n\n---\n\n##  \\[ABC149-D\\]预测与限制\n\n<br>\n\n\n### 题意\n\n剪刀石头布游戏，已知机器的手势序列，如果自己赢了，在出剪刀、石头、布三种手势的情况下，获得三种不同的得分。\n\n有一个限制，第$i$轮不能出和第$i-k$轮一样的手势。\n\n### 解法\n\n我们假设没有限制，那么就都出赢的手势就可以。\n\n假设$i=10,k=5$。如果第$5$轮出的石头，并且第$10$轮也需要出石头才能赢，那么第$10$轮就只能输（因为规则限制）。假设我们为了让第$10$轮赢而放弃第$5$轮，第$10$轮赢和第$5$轮赢，获得的得分是一样的。\n\n本题前面出的手势对整体得分没有影响，无后效性，可以使用贪心。\n\n\n---\n\n## \\[ABC149-E\\]贪婪的高桥\n\n\n<br>\n\n\n### 题意\n\n高桥在一个聚会上进行多次握手以增加聚会的快乐度。每位普通嘉宾有一个代表其“力量”的数值。高桥通过同时握住两位嘉宾的手来增加快乐度，快乐度的增加等于这两位嘉宾力量值的和。\n\n\n### 解法\n\n从n个人中任意选两个（允许相同），最多有$n \\times n$中选法，需要找出这些选法中，组合出来最大的$m$个。\n\n由于$n$较大，不能把所有组合都计算出来再排序。可以使用二分答案，假设我们按照能获得的快乐值从最大到最小的顺序握手，二分最后一次握手能达到的最大的快乐值。\n\n\n---\n\n## \\[ABC149-E\\]贪婪的高桥\n\n<br>\n\n二分的对象是最后一次握手可以获得的最大快乐度$x$。二分范围是$[ 1,2×A[𝑛] ]$，其中$𝐴[𝑛]$是排序后的最大力量值（因为两个最大值握手得到的快乐度最高）。\n\n二分快乐度，判断是否可以进行$M$次快乐度大于等于$mid$的握手，如果有，则 $l=mid+1$，否则$r=mid$；\n\n\n**验证函数 `check(x)`**：\n - 对于每个固定的$x$，我们需要判断是否可以进行$M$次快乐度大于等于$x$的握手。\n - 对于每个嘉宾$i$，我们计算需要的另一位嘉宾的最小力量$x - A[i]$，使用二分查找在排序后的数组中找到这个最小力量的位置 `pos`。\n - 所有大于等于这个力量的嘉宾都可以与嘉宾$i$握手，累计这样的握手数 `cnt` 和相应的快乐度总和 `ans`。\n - 使用前缀和数组来快速计算所有符合条件嘉宾的力量和。\n\n\n需要注意的是，可能有多个组合的快乐值和最后一次握手的相同，因此还需要减去那些。\n\n---\n\n## \\[ABC148-F\\]玩树上的标签游戏\n\n\n<br>\n\n\n### 题意\n\n这道题目是一个关于树形结构的追捕游戏，其中包含一个由N个顶点组成的树，Takahashi和Aoki分别站在不同的顶点上。游戏的规则是，Takahashi试图尽可能延长游戏时间，而Aoki则试图尽快结束游戏。两人轮流移动到相邻的顶点，如果两人达到同一顶点，游戏结束。题目要求计算在两人都采取最优策略的情况下，Aoki需要执行多少次移动才能结束游戏。\n\n\n\n### 解法\n\n考虑记录所有点到$u$和到$v$的最短距离，由于只有$n-1$条边，可以使用DFS算法完成。\n\n如果点$i$到$v$的距离小于点$i$到$u$的距离，这意味着$T$不可能会来到这里，因为$T$需要尽可能延长游戏时间。\n\n如果点$i$到$v$的距离大于点$i$到$u$的距离，则记录这个$i$到$v$的距离，选一个最大的即可。\n\n\n由于问题询问的是$A$的行走次数，因此最终答案需要减一。\n\n",
+    "categories": [
+      "竞赛",
+      "程序设计",
+      "暑期集训"
+    ],
+    "tags": [],
+    "publishedAt": "2024-07-25 00:23:15",
+    "sourcePath": "02. 竞赛/02. 程序设计/100. 暑期集训/02. 0722.md"
+  },
+  {
+    "slug": "6ea2f9",
+    "legacyPermalink": "/pages/6ea2f9/",
+    "title": "7月23日-ABC150",
+    "description": "给定$k$枚$500$日元的硬币，判断是否大于等于$x$。",
+    "contentMarkdown": "## \\[ABC150-A\\]500日元硬币\n\n<br>\n\n\n### 题意\n\n给定$k$枚$500$日元的硬币，判断是否大于等于$x$。\n\n\n### 解法\n\n直接定义两个变量$k$和$x$并输入，判断$k \\times 500$是否大于等于$x$即可。\n\n---\n\n## \\[ABC112-B\\]超过时间限制\n\n<br>\n\n\n### 题意\n\n给定多条路线，每条路线$i$有一个费用$c_i$和时间$t_i$。求出在满足时间限制的情况下最小的回家费用。\n\n\n### 解法\n\n遍历所有的路线，如果满足时间限制，则判断费用是否比当前最小的还要小，如果是的话更新最小费用即可。\n\n\n---\n\n## \\[ABC150-B\\]ABC计数\n\n<br>\n\n\n### 题意\n\n判断给定字符串中有多少个子串为\"ABC\"。\n\n### 解法\n\n子串/连续子序列：要求连续\n\n子序列：不要求连续\n\n先定义一个`ans=0`，然后枚举$i$从$2$到$n-1$，如果`s[i-1]== 'A' && s[i] == 'B' && s[i+1] == 'C'`，则`ans`加一。最后输出`ans`即可。\n\n\n\n---\n\n## \\[ABC150-C\\]计数顺序\n\n<br>\n\n\n### 题意\n\n给定两个$1$到$n$的排列$p$和$q$，判断他们按照字典序全排列后的索引差值的绝对值。\n\n### 解法\n\n本题数据量较小，因此可以直接暴力枚举。\n\n定义两个string类型变量输入，让$p$是较小的那一个，$q$是较大的那一个，从$p$开始迭代，一直到$q$走了多少步输出就可以。\n\nc++函数：`next_permutation( 起始位置，终止位置)`，可以让起始位置和终止位置之间的序列得到下一个排列，如果没有下一个序列返回false，否则返回true。\n\n\n\n\n\n对于一个string类型变量来说，起始位置是`s.begin()`，结束位置是`s.end()`。\n\n\n\n\n\n---\n\n## \\[ABC108-C\\]三角关系\n\n<br>\n\n\n### 题意\n\n给定两个整数$n,k$，计算三元组$(a,b,c)$的数量。三元组满足$a,b,c$均小于$n$且，$a+b,a+c,b+c$都是$k$的倍数。\n\n\n\n### 解法\n\n\n考虑$a,b,c$都是$k$的倍数，一定是满足条件的，一共有$(\\frac{n}{k}) ^ 3$种可能。\n\n另外的情况，假设$a,b,c$中有不是$k$的倍数的数字，如果$k$是奇数，可以证明$a,b,c$必定是$k$的倍数。因此只需要考虑$k$为偶数的情况。\n\n剩下的情况里两个数字加起来为$k$，只有一种情况，就是三个数字都是$\\frac{k}{2}$的奇数倍的和。\n\n\n---\n\n## \\[ABC108-C\\]三角关系\n\n<br>\n\n\n\n证明：\n\n因为$a+b,a+c$都是$k$的倍数，因此$b\\%k == c\\%k == temp$。又因为$b+c==k$，因此$temp+temp = 2*temp = k$。即$b$和$c$除以$k$的余数都是$\\frac{k}{2}$，即他们都是$\\frac{k}{2}$的奇数倍。\n\n如果有一个是偶数倍，则加起来一定会多一个$\\frac{k}{2}$，如果两个都是偶数，则包含在第一种情况里。\n\n因此，如有$k$是偶数，答案还需要再加上$[1,n]$中 $\\frac{k}{2}$的奇数倍的个数，即$( \\frac{n}{ \\frac{k}{2} }  - \\frac{n}{k})$\n\n---\n\n## \\[ABC150-D\\]半公倍数\n\n<br>\n\n\n### 题意\n\n给定一个长度为 $n \\ (1 \\leq n \\leq 10^5)$ 的数组$a$，且 $a_i$ 是偶数，求 $[1, M]$ 有多少个 $X$ 满足对任意 $X = a_i \\cdot (p + 0.5)$ 成立。\n\n### 解法\n\n\n\n原来的公式可以转换为：$x = \\frac{a_i}{2} \\cdot (2 \\cdot p + 1)$,即 $x$ 一定是所有$\\frac{a_i}{2}$的奇数倍。\n\n令$b_i = \\frac{a_i}{2}$\n\n我们把这个问题拆解成两部分，首先，$x$必须是所有$b_i$的倍数，也就是$x$是所有$b_i$的最小公倍数$lcm$的倍数。\n\n\n然后是第二个条件，$x$还得是所有$b_i$的奇数倍才行。这里引入了两个条件，首先$x$必须是$lcm$的奇数被，其次，$lcm$必须是所有$b_i$的奇数倍。\n\n我们可以这样判断：如果$lcm$除以每个$b_i$都是奇数，就说明可行。如果$lcm$除以某一个$b_i$得到了偶数，则直接输出0即可，因为$x$不可能是所有$b_i$的奇数倍。\n\n\n\n\n\n",
+    "categories": [
+      "竞赛",
+      "程序设计",
+      "暑期集训"
+    ],
+    "tags": [],
+    "publishedAt": "2024-07-25 00:24:44",
+    "sourcePath": "02. 竞赛/02. 程序设计/100. 暑期集训/03. 0723.md"
+  },
+  {
+    "slug": "46dd8a",
+    "legacyPermalink": "/pages/46dd8a/",
+    "title": "7月24日-ABC151",
+    "description": "成绩是不超过$k$的整数，给定前$n-1$门课程的成绩，计算最后一门课最少考多少分才能让整体达到平均分$m$。",
+    "contentMarkdown": "## \\[ABC151-B\\]实现目标\n\n<br>\n\n\n### 题意\n\n成绩是不超过$k$的整数，给定前$n-1$门课程的成绩，计算最后一门课最少考多少分才能让整体达到平均分$m$。\n\n\n### 解法\n\n\n直接算总分即可。平均分达到$m$，就意味着总分达到$n \\times m$，那么就算一下前$n-1$门课的总成绩与这个数字还差多少。\n\n\n---\n\n## \\[ABC151-C\\]欢迎来到AtCoder\n\n<br>\n\n\n### 题意\n\n求出**获得过 AC 的题目**数量和罚分数量。罚分数量指对于获得过 AC 的题目，在**第一次 AC 之前**的 WA 数量总和。\n\n- 多次AC不累加\n- 如果没有过这道题就不算罚分\n- 只有第一次AC之前的WA才算罚分，之后的不算\n  \n### 解法\n\n- 创建两个数组，分别记录每个题WA的数量以及是否AC\n- 如果当前是WA，并且这道题没有AC，则这道题WA的数量加一\n- 如果当前是AC，并且这道题没有AC，总通过数加一，罚分加上当前题的WA数量，标记当前题目已经AC\n\n---\n\n## \\[ABC151-D\\]迷宫大师\n\n<br>\n\n\n### 题意\n\n给定一个矩阵，有些点可以走有些不可以走。找到任意两点最短距离的最大值。\n\n### 解法\n\n\nBFS模板题。直接枚举每个能走的点，到其他点的最短距离，再取一个最大值即可。\n\n\n---\n\n## \\[ABC099-D\\]好网格\n\n<br>\n\n\n### 题意\n\n给你一个$n \\times n$的矩阵，$C(i,j)$为矩阵第$i$行第$j$列的初始颜色，给你一个$c \\times c$的矩阵$D(i,j)$表示第$i$种颜色变为第$j$种颜色所花费的代价，当且仅当$i = j$时代价为0。\n\n在$C$矩阵中，如果满足横坐标$i$加纵坐标$j$的和，除以三余数相同的方块颜色相同，余数不同的方块颜色不同，就是一个好矩阵。问我们如何花费最小代价使这个矩阵变为一个好矩阵。\n\n### 解法\n\n\n直接暴力枚举。\n\n记录余数为$p(p=0,1,2)$的点中，颜色为$x$的有多少个。然后三重循环，枚举每种余数，将所有颜色换为一种统一颜色得代价。\n\n\n\n---\n\n## \\[ABC107-D\\]中位数\n\n<br>\n\n\n### 题意\n\n一个长度为 $M$ 的序列的中位数为这个序列从小到大排序后第 $\\lfloor \\frac{M}{2} \\rfloor + 1$ 个数。将这个序列的所有子段的中位数放入一个序列中，求这个序列的中位数。\n\n\n\n### 解法\n\n如果$x$是一个序列的中位数，换句话讲就是这个数列中大于$x$的数字有$\\frac{2}{n}$个。\n\n对于每个$x$，大于$x$的数的个数显然是对于$x$的值大小单调递减的。\n\n因此本题使用二分答案，二分中位数在数组排序后的下标位置。\n\n对于单个数列，如果我们要找他的中位数，也就是要找大于$x$的数有$\\frac{n}{2}$的位置。\n\n对于区间来说也是同样道理，对于数组 $a$，求所有区间中位数大于等于 $x$ 的数量，因为区间的中位数就是新的序列中的元素。\n\n\n\n\n---\n\n## \\[ABC107-D\\]中位数\n\n<br>\n\n为了方便的判断一个区间中位数是否大于等于$x$的，考虑辅助数组 $b$，$b_i = \\begin{cases} 1 & (a_i \\ge x) \\\\ -1 & (a_i < x) \\end{cases}$，如果 $\\sum_{i=l}^r b_i \\ge 0$，则区间 $(l,r)$ 的中位数大于等于 $x$。\n\n于是题目又转换为：对于数组 $b$，求出区间和非负的区间数。\n\n使用前缀和可简化为求满足 $sum_r - sum_{l-1} \\ge 0$ 的 $(l,r)$ 数量。\n\n如果我们要枚举$l$和$r$显然会超时，因此需要想一个办法。对于每一个$sum_r$，我们只需要小于等于 $sum_r$ 的数有多少个即可。换句话说，对于每个$sum_r$，我们需要知道$b$序列中位于某个区间的数字有多少个，可以使用树状数组或者值域线段树来解决。\n\n注意由于 $b$ 数组可能为负数，所以在树状数组统计时所有元素都要加上 $n+1$。\n\n",
+    "categories": [
+      "竞赛",
+      "程序设计",
+      "暑期集训"
+    ],
+    "tags": [],
+    "publishedAt": "2024-07-25 00:25:30",
+    "sourcePath": "02. 竞赛/02. 程序设计/100. 暑期集训/04. 0724.md"
+  },
+  {
+    "slug": "f77f30",
+    "legacyPermalink": "/pages/f77f30/",
+    "title": "东南大学openwrt中继校园网",
+    "description": "首先按照如下方式，单击无线-扫描，找到SEU-WLAN或SEU-ISP加入校园网。网络名称随便写一个，比如seu。",
+    "contentMarkdown": "## 路由器加入校园网\n\n首先按照如下方式，单击无线-扫描，找到SEU-WLAN或SEU-ISP加入校园网。网络名称随便写一个，比如seu。\n\n![](https://img.peacesheep.xyz/20240725145035.png)\n\n这时候会多出来一个“模式: Client”的无线。\n\n![](https://img.peacesheep.xyz/20240725145203.png)\n\n![](https://img.peacesheep.xyz/20240725145322.png)\n\n可以运行`ping 10.80.128.2`，如果能ping到就说明连接没有问题了。\n\n## 登录校园网\n\n用电脑连接到路由器，然后修改hosts文件，windows位于`C:\\Windows\\System32\\drivers\\etc`，在其中新加一行`10.80.128.2 w.seu.edu.cn`。\n\n![](https://img.peacesheep.xyz/20240725145523.png)\n\n在浏览器打开`w.seu.edu.cn`,登录就可以了，连接到这个路由器的设备都可以使用校园网。",
+    "categories": [
+      "教程",
+      "物联网与路由器"
+    ],
+    "tags": [],
+    "publishedAt": "2024-07-25 14:40:05",
+    "sourcePath": "05. 教程/02. 物联网与路由器/04. 东南大学openwrt中继校园网.md"
+  },
+  {
+    "slug": "874001",
+    "legacyPermalink": "/pages/874001/",
+    "title": "windows访问共享打印机报错0x0000011b",
+    "description": "1. 在安装了打印机的电脑上点使用win+R键打开运行，输入regedit.exe打开注册表编辑器。",
+    "contentMarkdown": "1. 在**安装了打印机**的电脑上点使用win+R键打开运行，输入regedit.exe打开注册表编辑器。\n\n2. 进入到 [HKEY_LOCAL_MACHINE  ->  System   ->  CurrentControlSet   -> Control -> Print]\n\n3. 新建DWORD（32位）值，重命名为：“RpcAuthnLevelPrivacyEnabled”，设置键值为“0”，注意64位的系统也要新建32位DWORD值。\n\n4. 重启打印服务 Print Spooler，在此电脑右键，选择管理，点服务，找到Print Spooler服务，重新启动。如果觉得这一步麻烦，直接重启电脑也可以。\n\n应该解决问题了。\n\n::: tip 参考链接\n[windows无法连接到打印机，错误代码0x0000011b，不删 KB5005565更新的解决办法](https://www.jxbh.cn/article/2515.html)\n:::\n",
+    "categories": [
+      "教程",
+      "错误解决"
+    ],
+    "tags": [],
+    "publishedAt": "2024-09-05 15:56:54",
+    "sourcePath": "05. 教程/05. 错误解决/02. windows访问共享打印机报错0x0000011b.md"
+  },
+  {
+    "slug": "2248fc",
+    "legacyPermalink": "/pages/2248fc/",
+    "title": "服务器断电重启后cuda失效的解决方案",
+    "description": "以前遇到显卡驱动突然出现问题，都是直接重装，后来发现也许不用。",
+    "contentMarkdown": "以前遇到显卡驱动突然出现问题，都是直接重装，后来发现也许不用。\n\n<!-- more -->\n\n## 现象\n\n服务器断电或者重启后，输入`nvidia-smi`出现`Failed to initialize NVML: Driver/library version mismatch`。\n\n## 可以尝试的解决方法\n\n1. 重新加载 NVIDIA 内核模块： 在终端中运行以下命令来卸载并重新加载 NVIDIA 内核模块：\n\n```bash\nsudo rmmod nvidia_uvm nvidia_drm nvidia_modeset nvidia\nsudo modprobe nvidia\n```\n\n如果第一个命令遇到“module is in use”错误，可以先不管，继续执行第二条，然后再重新执行第一条和第二条，如果这次没出错就不用管了，如果还是出错，可以先正常重启一下，再尝试这两个命令。\n",
+    "categories": [
+      "教程",
+      "错误解决"
+    ],
+    "tags": [],
+    "publishedAt": "2024-09-12 17:00:08",
+    "sourcePath": "05. 教程/05. 错误解决/03. 服务器断电重启后cuda失效的解决方案.md"
+  },
+  {
+    "slug": "1eb8a4",
+    "legacyPermalink": "/pages/1eb8a4/",
+    "title": "论文阅读笔记Do Transformers Really Perform Bad for Graph Representation",
+    "description": "Transformer在自然语言中效果好，在图上表现不好。",
+    "contentMarkdown": "## 问题\n\nTransformer在自然语言中效果好，在图上表现不好。\n\n## 结构编码\n\n### 1.节点中心性编码\n\n传统transformer的注意力公式中，根据单词之间的相似性分配attention distribution，例如当前要翻译的是“猫在吃鱼”，模型在翻译“吃”这个词时，会计算它与“猫”、“鱼”等词的语义关联。如果“吃”和“鱼”的语义关联较强，那么attention机制会为“鱼”分配较高的注意力权重，帮助模型正确理解和翻译这个短语。\n\n对于图来说，可以把每个节点的度中心性编码，如果是有向图则再细分为入度和出度中心性，然后和点的原始特征做加法，作为新的点的特征。\n\n### 2.节点位置编码\n\nTransformer模型的一个优势是其全局感受野。在每个Transformer层中，每个标记（token）都可以关注序列中任意位置的信息，并基于此信息处理其表示。但是，这种操作带来了一个附带问题：模型必须显式地指定token的位置，加入位置编码。\n\n\n然而，对于图结构数据来说，节点并不像序列那样按顺序排列。为了在模型中编码图的结构信息，作者提出了一种新的空间编码（Spatial Encoding）方法。\n\n\n对于顺序数据，可以采用两种方式来处理位置编码：\n\n+ 绝对位置编码（absolute positional encoding）：为序列中的每个位置生成一个位置嵌入，这些嵌入作为输入传递给模型。这样，模型就知道每个元素在序列中的具体位置。比如位置1的元素、位置2的元素等都有明确的位置信息。\n\n+ 相对位置编码（relative positional encoding）：这种方式不依赖于具体的位置，而是编码序列中任意两个位置之间的相对距离。通过这种方式，模型可以知道不同元素之间的相对顺序关系，而不必依赖绝对位置。\n\n\n在本文中，考虑使用相对位置编码，考虑节点u和v，如果两个节点连通，则$\\phi(vi, vj)$ 为 $vi$ 和 $vj$之间的最短路径距离，如果不联通则为-1。\n\n令 $A_{ij}$为查询（Query）和键（Key）相乘得到的矩阵 $A$的 $(i, j)$元素，公式如下：  \n\n\n  $$A_{ij} = \\frac{(h_i W_Q)(h_j W_K)^T}{\\sqrt{d}} + b_{\\phi(vi,vj)} $$\n\n   这里 $(h_i W_Q)(h_j W_K)^T$是查询和键向量相乘的结果，表示节点 $vi$和 $vj$之间的相关性；而 $b_{\\phi(vi,vj)}$是根据最短路径距离 $\\phi(vi,vj)$生成的可学习偏置项，调整这个注意力得分。\n\n\n  其中 $b_{\\phi(vi,vj)}$是一个根据 $\\phi(vi, vj)$索引的可学习标量，并在所有层中共享。这个偏置项根据最短路径距离进行索引，并在模型的不同层之间共享。\n\n### 3. 边编码\n\n\n\n\n在很多图任务中，边也具有结构特征。\n   \n两种常见的边编码方法，一是将边的特征与其关联的节点特征相加，这样边的特征被直接传递给相关节点。二是在每个节点的特征聚合过程中，将与该节点相连的边的特征与节点特征一同使用。\n\n这两种方法的共同问题是，边的信息只被传播到与边直接关联的节点。这意味着边特征没有很好地在整个图结构中得到传播或利用，从而限制了边特征在全图表示中的有效性。\n\n为了更好地将边的特征编码到注意力机制中，Graphormer提出了一种新的边编码方法。\n\n1. **注意力机制中的节点相关性计算**：在自注意力机制中，模型需要为每对节点$(v_i, v_j)$ 计算它们之间的相关性。传统方法只根据节点特征计算相关性，但Graphormer认为**连接节点的边**也应该被纳入相关性的计算中，因为边在节点之间的关系上起到了关键作用。\n\n2. **最短路径（Shortest Path）和边特征的引入**：对于每对节点$(v_i, v_j)$，我们找到连接它们的最短路径$SP_{ij} = (e_1, e_2, ..., e_N)$，即从$v_i$ 到$v_j$ 的边序列。然后，计算路径上所有边特征与一个可学习的嵌入向量的点积，并取这些点积的平均值。这就相当于将沿着节点对之间的边的信息以一种加权平均的形式整合起来。\n\n3. **注意力机制中的修正**：在自注意力机制中，注意力矩阵$A$ 的元素$A_{ij}$ 通常通过节点特征的点积来计算。Graphormer引入了两项修正：\n   - 第一项是基于最短路径的空间编码$b_{\\phi(v_i,v_j)}$。\n   - 第二项是新的边特征编码$c_{ij}$，具体定义如下：\n     $$     A_{ij} = \\frac{(h_i W_Q)(h_j W_K)^T}{\\sqrt{d}} + b_{\\phi(v_i,v_j)} + c_{ij} $$\n    \n     其中， $c_{ij}$ 是通过沿着最短路径上的每条边计算边特征与可学习的嵌入向量的点积，公式为：\n     $$     c_{ij} = \\frac{1}{N} \\sum_{n=1}^{N} x_{e_n} (w_n^E)^T$$\n     \n     这里， $x_{e_n}$ 是最短路径上第$n$ 条边的特征，$w_n^E$ 是对应的可学习权重嵌入，$d_E$ 是边特征的维度。\n\n\n![](https://img.peacesheep.xyz/20240916235043.png)",
+    "categories": [
+      "论文阅读",
+      "图"
+    ],
+    "tags": [],
+    "publishedAt": "2024-09-16 22:05:36",
+    "sourcePath": "06. 论文阅读/02. 图/100. Do Transformers Really Perform Bad for Graph Representation.md"
+  },
+  {
+    "slug": "8dcdc2",
+    "legacyPermalink": "/pages/8dcdc2/",
+    "title": "关于玩路由器tplink-xdr6088差点变砖的心得",
+    "description": "起因是某天和工位隔壁组同学一起吃海底捞的时候，想着一起买个路由器，挂点服务在上面。",
+    "contentMarkdown": "起因是某天和工位隔壁组同学一起吃海底捞的时候，想着一起买个路由器，挂点服务在上面。\n\n由于人比较多，而且工位网速较快，需要一个高性能的路由器，又考虑到自带的存储可能不够，可能需要个USB口外接硬盘。所以买了比较小众的TPlink tl-XDR6088路由器。然后就开始了刷机，遇到了很多问题，期间差点变砖，在这里把一些收获和心得写下来。\n\n刷机过程主要参考的是[一篇教程](https://blog.lishun.me/tl-xdr608x-openwrt-install)，下文所述“教程”如果没有特别说明都是这个教程。\n\n## 什么叫“变砖”\n\n顾名思义，如果你的路由器成了一个没有任何路由功能，且不能恢复的只有硬件的东西，那就叫做变砖了。\n\n## 什么是固件\n\n通俗来说，硬件就是看得见摸得着的东西，例如CPU、显卡、内存等。软件就是我们用编程语言编写出来的具有一定功能的程序。\n\n固件是一种介于两者之间的东西，介于软件和硬件之间的一种程序代码，也被称为固化的软件。举个例子，你发明了一个无人机，你需要为它编写程序让他动起来，尽管你是用代码编写的，但是它与硬件强绑定，即这个代码的功能只能控制这个无人机，不能控制别的，与硬件高度耦合。\n\n我们在日常写软件过程中，需要尽可能解耦，避免把软件写成固件。\n\n## 路由器的启动过程\n\n路由器启动大致可以分成三个阶段：Preloader、bootloader、系统启动。\n\n根据上面的教程，你会发现下载了四个文件，这四个文件的作用分别是：\n\n\n### preloader.bin：\n\nPreloader 是在 U-Boot 之前运行的一个小型启动程序，它是设备启动的第一个阶段，用于初始化最基本的硬件功能，例如时钟、内存控制器等，以便引导加载 U-Boot。\n它的作用是初始化关键的硬件设置，并为 U-Boot 和系统的进一步加载准备好环境。这个文件相当于启动链的第一步。\n\n\n### xxxuboot.fip\n\n这是 BL31 和 U-Boot 的组合文件，可以认为就是bootloader。\n\nBL31 是 ARM 体系结构中的一个固件阶段，属于，负责在启动过程中进行关键硬件初始化。\nU-Boot 是一个通用的引导加载程序，用于初始化硬件设备（如 CPU、RAM、存储设备）并启动操作系统内核。它允许设备在启动时选择从哪里加载固件或启动操作系统。\n这个文件的作用是引导加载，并且为路由器提供一个初始化和启动的基础。\n\n### xxx-squashfs-sysupgrade.itb：\n\nSysupgrade 文件是 OpenWrt/ImmortalWRT 用来升级系统的固件文件，它包含整个路由器的文件系统和内核。\nSquashFS 是一种只读文件系统，用于存储路由器的固件内容，因为它的压缩率高，可以节省存储空间。\nITB (Image Tree Blob) 是一种多段固件打包格式，包含内核、设备树和根文件系统，通常用于设备的固件升级。\n这个文件是用来通过 Web 界面或命令行方式更新 ImmortalWRT 固件的核心文件。它包含了路由器运行的操作系统的所有内容。\n\n### xxx-initramfs-recovery.itb：\n\nInitramfs 是一种临时的内存文件系统，用于在系统启动时加载并运行。这种文件系统包含一个最小化的 Linux 系统，可以在硬件初始化后作为恢复系统使用。\nRecovery 文件是用于路由器的恢复模式，它在设备出现问题或需要重新刷机时非常有用。\n\n装过机的同学应该比较熟悉，这就类似于转机的PE系统。\n\n\n## uboot是否就是不死系统，可以直接用它更新固件？\n\n\n一定程度上，uboot就是不死系统。因为只要uboot存在，就能实现一些基础的功能。比如，教程中提到的uboot，启动后会默认使用tftp协议，向一个特定的地址（可能是192.168.1.254），不断请求一个叫做`openwrt-mediatek-filogic-tplink_tl-xdr6088-initramfs-recovery.itb`。只要你开启tftp服务，并且存在这个文件，那么就能进入到一个临时系统（类似于PE，就是上文提到的Recovery），你就可以在这个临时系统进行一些操作，拯救你的路由器。\n\n不同的uboot具有不同的功能，教程提到的uboot比较麻烦，你要有tftp服务器，要有恢复用的固件，然后从恢复固件里面用系统升级。如果你不知道这个，在你看来这个路由器就是“变砖了”。\n\n但是，有的uboot打开会看到这样的界面![](https://img.peacesheep.xyz/839b4168e6d7684e37010e710867a8ce.png)，你可以非常方便的升级固件。\n\n\n## uboot是否是通用的？\n\n不一定，不同的固件采用不同的布局，不同的uboot能支持的布局也不一样。有的uboot可以支持多种布局，你可以在刷固件的时候选择使用哪种布局，刷入对应的固件。\n\n如果你刷错了uboot不支持的固件，会导致无法进入系统，但通常不会损坏uboot自身，你可以进入uboot重新刷适合的固件。\n\n## openwrt、immportalwrt、qwrt之类的都是什么？\n\nOpenWRT、ImmortalWRT、QWRT等都是基于Linux的开源路由器固件。其中OpenWRT是最基础的，类似于linux系统本身。KWRT、QWRT、ImmportalWRT，像是ubuntu、debian等linux发行版。尤其是ImmportalWRT，是专门针对国内优化过的固件，推荐使用。\n\n::: tip 参考链接\n[TL-XDR6088/6086 刷入官方 Openwrt/Immortalwrt](https://blog.lishun.me/tl-xdr608x-openwrt-install)\n\n[【分享】XDR-6088支持多分区的Uboot，支持OP官方、爱快、Immortal，QWRT](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8398177&highlight=6088)\n\n[小白亲刷 TP-LINK TL_XDR6088 /6086 刷入官方Openwrt/Immortalwrt 及刷回原厂教程完](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8307196)\n\n感谢“完美闭环-MT798X交流总群”各位群友的帮助!\n\n:::\n\n\n",
+    "categories": [
+      "教程",
+      "物联网与路由器"
+    ],
+    "tags": [],
+    "publishedAt": "2024-09-26 00:28:11",
+    "sourcePath": "05. 教程/02. 物联网与路由器/05. 关于tplink-xdr6088差点变砖的心得.md"
+  },
+  {
+    "slug": "2bcd7b",
+    "legacyPermalink": "/pages/2bcd7b/",
+    "title": "想自己写一个高性能的IM",
+    "description": "之前给slidev提了一个issue，希望能够支持部署后的同步，现在有人做出来的了，并且实现了服务器和客户端，但是服务器端是用node实现的，我想自己用go实现一个，这就需要一个高可用的IM作为支撑了。",
+    "contentMarkdown": "之前给[slidev](https://github.com/slidevjs/slidev)提了一个[issue](https://github.com/slidevjs/slidev/issues/1227)，希望能够支持部署后的同步，现在有人做出来的了，并且实现了服务器和客户端，但是服务器端是用node实现的，我想自己用go实现一个，这就需要一个高可用的IM作为支撑了。\n\n<!-- more -->\n\n\n正好我自己个个人网站也需要IM功能，之前实现的非常简单，经常出现各种问题，借着这个机会把这个功能改进一下。\n\n之后会在这个分类下写一些自己的IM的实现过程。\n\n基本的框架就是选择用字节跳动的[kitex](https://www.cloudwego.io/zh/docs/kitex/overview/)和 [hertz](https://www.cloudwego.io/zh/docs/hertz/)写了。",
+    "categories": [
+      "教程",
+      "即时通讯"
+    ],
+    "tags": [],
+    "publishedAt": "2024-10-08 22:42:07",
+    "sourcePath": "03. 项目/06. 即时通讯/01. 想自己写一个高性能的IM.md"
+  },
+  {
+    "slug": "674724",
+    "legacyPermalink": "/pages/674724/",
+    "title": "Nginx允许特定域名跨域（解决明明200但是仍然CORS错误）",
+    "description": "使用go写了后端用nginx部署，遇到了各种跨域问题，比如明明请求都200了但还是显示CORS错误，在此记录一下解决方法。",
+    "contentMarkdown": "使用go写了后端用nginx部署，遇到了各种跨域问题，比如明明请求都200了但还是显示CORS错误，在此记录一下解决方法。\n\n\n<!-- more -->\n\n\nnginx在每个location下面新加以下两个if：\n\n```conf\n  if ($request_method = 'OPTIONS') {\n    add_header 'Access-Control-Allow-Origin' \"$http_origin\" always;\n    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;\n    add_header 'Access-Control-Allow-Credentials' 'true' always;\n    add_header 'Access-Control-Allow-Headers' 'Origin, Content-Type, Accept' always;\n    add_header 'Content-Type' 'text/plain; charset=utf-8';\n    add_header 'Content-Length' 0;\n    return 204;\n}\nif ($http_origin ~* (https://peacesheep\\.xyz|https://www\\.peacesheep\\.xyz)) {\n    add_header 'Access-Control-Allow-Origin' \"$http_origin\";\n    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';\n    add_header 'Access-Control-Allow-Credentials' 'true';\n    add_header 'Access-Control-Allow-Headers' 'Origin,Content-Type,Accept';\n}\n\n```\n\n第一个if是允许[预检请求](https://developer.mozilla.org/zh-CN/docs/Glossary/Preflight_request)，如果不加第一个只加第二个，会导致GET请求没问题，但是POST等请求产生CORS错误。\n\n另外，需要注意`Access-Control-Allow-Origin`只能<mark>出现一次</mark>。如果nginx添加了，你的后端（例如gin等）又添加了一遍，会出现两个`Access-Control-Allow-Origin`，此时即便两个一样，并且和你的origin一致，你还是会遇到CORS错误！\n\n![](https://img.peacesheep.xyz/20241017014113.png)\n\n![](https://img.peacesheep.xyz/f9768713c5c417f13a584b11fab941bc.png)\n",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [],
+    "publishedAt": "2024-10-17 01:27:32",
+    "sourcePath": "100. 常用操作/02. 常用命令与配置文件/05. Nginx做后端时允许特定域名跨域.md"
+  },
+  {
+    "slug": "cfd48e",
+    "legacyPermalink": "/pages/cfd48e/",
+    "title": "自己实现高性能IM-服务划分",
+    "description": "所谓万事开头难，首先想一下简单的服务划分，当然后面很可能会变，但至少现在要先决定一个，不然会一直想下去。由于是自己写的项目，所以不会把服务拆分的过于细致。",
+    "contentMarkdown": "所谓万事开头难，首先想一下简单的服务划分，当然后面很可能会变，但至少现在要先决定一个，不然会一直想下去。由于是自己写的项目，所以不会把服务拆分的过于细致。\n\n<!-- more -->\n\n\n## API 网关\n\n### 功能\n\n使用 hertz 编写，提供 http 服务，是除长连接服务外，所有服务的对外访问接口。\n\n\n[sheepim-api-gateway](https://github.com/li1553770945/sheepim-api-gateway)\n\n## 一、用户管理模块\n## 1. 用户服务\n\n### 功能\n\n- 根据用户 id 获取用户信息\n- 检查用户名和密码是否匹配\n\n\n[sheepim-user-service](https://github.com/li1553770945/sheepim-user-service)\n\n\n\n## 2. 鉴权服务\n\n### 功能\n\n- 登录功能，根据用户名密码如果正确生成 token\n- 根据token获取已登录用户信息\n\n\n[sheepim-auth-service](https://github.com/li1553770945/sheepim-auth-service)\n\n\n## 二、房间管理模块\n\n## 1. 房间服务\n\n### 功能\n\n- 负责聊天房间的创建、加入、销毁\n\n[sheepim-room-service](https://github.com/li1553770945/sheepim-room-service)\n\n## 2. 在线状态服务\n\n### 功能\n\n- 负责维护客户端的在线状态，以及存储每个客户端位于哪个长连接服务的实例上\n\n\n[sheepim-online-service](https://github.com/li1553770945/sheepim-online-service)\n\n\n## 三、消息处理模块\n\n## 1. 长连接服务\n\n### 功能\n\n- 维持与客户端的长连接\n- 收到消息后，转发给推送代理\n- 负责把推送服务发送过来的消息发送给客户端\n\n[sheepim-connect-service](https://github.com/li1553770945/sheepim-connect-service)\n\n\n## 2. 消息推送代理\n\n### 功能\n\n- 负责接受长连接服务收到的消息，将其加入消息队列\n\n[sheepim-push-proxy-service](https://github.com/li1553770945/sheepim-push-proxy-service)\n\n## 3. 消息推送服务\n\n- 负责从消息队列取出消息，通过在线服务推送给对应的长连接服务\n\n[sheepim-push-worker-service](https://github.com/li1553770945/sheepim-push-worker-service)\n\n\n\n\n\n",
+    "categories": [
+      "教程",
+      "即时通讯"
+    ],
+    "tags": [],
+    "publishedAt": "2024-10-18 00:43:06",
+    "sourcePath": "03. 项目/06. 即时通讯/02. 自己实现高性能IM-服务划分.md"
+  },
+  {
+    "slug": "b84879",
+    "legacyPermalink": "/pages/b84879/",
+    "title": "自己实现高性能IM-初始代码框架搭建并实现依赖注入",
+    "description": "本文介绍了基本的kitex项目搭建，实现了log 的使用，使用依赖注入实现控制反转。需要注意的是，在windows上可能会出现问题，推荐在linux或mac开发。",
+    "contentMarkdown": "本文介绍了基本的kitex项目搭建，实现了log 的使用，使用依赖注入实现控制反转。需要注意的是，在windows上可能会出现问题，推荐在linux或mac开发。\n\n<!-- more -->\n\n\n项目主要使用了字节跳动的RPC框架[kitex](https://www.cloudwego.io/zh/docs/kitex/)。\n\n## RPC服务-kitex 项目搭建\n  \n```bash\ngit clone https://github.com/cloudwego/kitex-examples.git\n```\n\n把这个项目克隆下来，然后单独把hello拿出来，其他的删掉。使用`go mod tidy`同步一下依赖，如果没有`go.mod`就先`go mod init xx`一下。\n\n可以运行一下当前软件包，也就是服务端，然后再运行一下client里面的main.go这个单个文件，如果看到client不断输出response就说明成功了。\n\n如果要实现自己的服务，只需要在thrift 文件中，定义自己的Req 结构体、Resp 结构体以及对应的服务函数即可。例如，编辑`idl/auth.thrift`：\n\n```thrift\nnamespace go auth\n\ninclude \"base.thrift\"\n\nstruct LoginReq {\n    1: required string username\n    2: required string password\n}\n\nstruct LoginResp {\n    1: required base.BaseResp baseResp\n    2: optional string token\n}\n\n\n\nservice AuthService {\n    LoginResp Login(LoginReq req)\n\n}\n\n```\n\n然后运行`kitex -module github.com/li1553770945/sheepim-auth-service -service sheepim-auth-service idl/auth.thrift`就可以生成服务端和客户端对应的代码了。\n\n## HTTP 服务-hertz项目搭建\n\n\n## 依赖注入改造\n\n主要使用[wire](https://github.com/google/wire)库实现，这里不在介绍安装方法。\n\n所谓依赖注入，就是如果A需要B，则创建A的时候应该传入一个B的对象，而不是由A自己新建B的对象或者使用全局的B对象。\n\n以下只是我习惯的写法，不一定对每个人都适用。\n\n首先，新建一个container.go文件新建container类，然后把handler里面需要的都写成它的属性，比如一般kitex项目有个handler，handler里面我们需要调用自己的service，就可以把service的接口声明成container的属性。如果是service需要而其他地方不需要一般不需要写在container里面。\n\n\ncontainer是一个最顶层的类，我们可以把它的对象命名为APP，并且得到它需要使用单例模式，也就是说我们整个项目有且仅有一个container对象，并且整个项目只有这一个全局变量。\n\n\n\n```go\npackage container\n\nimport (\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/config\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/internal/service\"\n\t\"sync\"\n)\n\ntype Container struct {\n\tConfig      *config.Config\n\tUserService user.IUserService\n}\n\nvar APP *Container\nvar once sync.Once // 通过once实现单例模式\n\nfunc GetGlobalContainer() *Container {\n\tif APP == nil {\n\t\tpanic(\"APP在使用前未初始化\")\n\t}\n\treturn APP\n}\n\nfunc InitGlobalContainer(config *config.Config) {\n\tonce.Do(func() {\n\t\tAPP = GetContainer(config)\n\t})\n}\nfunc NewContainer(config *config.Config, userService user.IUserService,\n) *Container {\n\treturn &Container{\n\t\tConfig:      config,\n\t\tUserService: userService,\n\t}\n\n}\n\n```\n\n然后新建一个`wire.go`实现一个`GetContainer`函数：\n\n```go\n//go:build wireinject\n// +build wireinject\n\npackage container\n\nimport (\n\t\"github.com/google/wire\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/config\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/database\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/internal/repo\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/internal/service\"\n)\n\nfunc GetContainer(env string) *Container {\n\tpanic(wire.Build(\n\n\t\t//infra\n    config.NewConfig\n\n\t\t//repo\n\t\trepo.NewRepository,\n\t\tdatabase.NewDatabase,\n\n\t\t//service\n\t\tuser.NewUserService,\n\n\t\tNewContainer,\n\t))\n}\n```\n\n把所有的类的新建对象的函数写在这里，然后在这个目录下运行`wire`命令。就会得到一个`wire_gen.go`，里面是生成的代码。\n\n```go\n// Code generated by Wire. DO NOT EDIT.\n\n//go:generate go run github.com/google/wire/cmd/wire\n//go:build !wireinject\n// +build !wireinject\n\npackage container\n\nimport (\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/config\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/database\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/internal/repo\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/internal/service\"\n)\n\n// Injectors from wire.go:\n\nfunc GetContainer(env string) *Container {\n  cfg := config.NewConfig(env)\n\tdb := database.NewDatabase(cfg)\n\tiRepository := repo.NewRepository(db)\n\tiUserService := user.NewUserService(iRepository)\n\tcontainer := NewContainer(cfg, iUserService)\n\treturn container\n}\n\n```\n\n我们在main里面调用` InitGlobalContainer`就会初始化所有需要初始化的对象，handler里面就可以用`GetGlobalContainer`得到全局的container，从而使用service了。\n\n\n\n",
+    "categories": [
+      "教程",
+      "即时通讯"
+    ],
+    "tags": [],
+    "publishedAt": "2024-10-20 01:25:06",
+    "sourcePath": "03. 项目/06. 即时通讯/03. 使用kitex和hertz搭建项目框架.md"
+  },
+  {
+    "slug": "0a5827",
+    "legacyPermalink": "/pages/0a5827/",
+    "title": "kitex 与 hertz 配合使用，实现服务发现链路追踪等功能",
+    "description": "本教程将以登录用户为例，说明整个微服务系统的架构和运作流程。",
+    "contentMarkdown": "本教程将以登录用户为例，说明整个微服务系统的架构和运作流程。\n\n\n### 1. 链路追踪\n\nkitex支持多种链路追踪，这里选用了opentelemetry。OpenTelemetry 是一个开源的可观测性框架，它提供了一种标准化的方法来收集、处理和导出遥测数据，涵盖了跟踪（Trace）、指标（Metrics）和日志（Logs）。该框架包含了一套通用的 API、SDK 和工具，从而简化了应用程序可观测性的实现过程，使其更加统一。\n\n然而，OpenTelemetry 本身只是一个框架，它定义了数据的标准和收集方式，但并不提供数据的存储和展示功能。因此，为了充分利用 OpenTelemetry 收集的跟踪数据，需要一个相应的平台来进行数据的接收、存储和可视化。在这方面，Jaeger 是一个理想的选择。\n\nJaeger 能够直接接收由 OpenTelemetry SDK 生成的跟踪数据。这意味着，当应用程序通过 OpenTelemetry 进行检测并收集跟踪信息时，这些信息可以无缝地被发送到 Jaeger。在 Jaeger 平台上，这些数据得以存储，并通过其强大的可视化工具进行展示，从而帮助开发者分析和理解服务之间的交互和性能表现。因此，Kitex 选择支持 OpenTelemetry 并结合 Jaeger，为开发者提供了一套完整的链路追踪解决方案。\n\n### jaeger安装\n\n到[官网](https://www.jaegertracing.io/download/)直接下载就可以，各个系统都有。以windows为例，下载好后，使用管理员身份的cmd运行all-in-one即可。\n\n\n### opentelemetry在kitex中的使用\n\n参照[链路追踪](https://www.cloudwego.io/zh/docs/kitex/tutorials/observability/tracing/)。\n\n### 查看\n\n打开本地的`16686`端口，即可看到如下界面：\n\n![](https://img.peacesheep.xyz/20241020012127.png)\n\n此时说明我们的链路追踪已经好了。\n\n### 代码实现\n\n只要在项目中运行下面的代码即可，不管在什么地方都可以，比如main函数里面或者随便一个函数，他会影响到整个项目的全局：\n\n服务端:\n\n```go\npackage trace\n\nimport (\n\t\"github.com/hertz-contrib/obs-opentelemetry/provider\"\n\t\"github.com/li1553770945/sheepim-user-service/biz/infra/config\"\n)\n\nfunc InitTrace(config *config.Config) provider.OtelProvider {\n\tp := provider.NewOpenTelemetryProvider(\n\t\tprovider.WithServiceName(config.ServerConfig.ServiceName),\n\t\tprovider.WithExportEndpoint(config.OpenTelemetryConfig.Endpoint),\n\t\tprovider.WithInsecure(),\n\t)\n\treturn p\n\n}\n```\n\n\n\n\n2. 服务发现\n\n这里只介绍etcd，其他方法类似\n\n服务端；\n\n\n```go\nr, err := etcd.NewEtcdRegistry(App.Config.EtcdConfig.Endpoint) \nif err != nil {\n  klog.Fatal(err)\n}\nserviceName := App.Config.ServerConfig.ServiceName\nsvr := authservice.NewServer(\n  new(AuthServiceImpl),\n  server.WithSuite(tracing.NewServerSuite()),\n  server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: serviceName}),\n  server.WithRegistry(r), //核心是这个\n  server.WithServiceAddr(addr),\n)\n\n```\n\n客户端：\n\n```go\nfunc NewUserClient(config *config.Config) userservice.Client {\n\tr, err := etcd.NewEtcdResolver(config.EtcdConfig.Endpoint)\n\tuserClient, err := userservice.NewClient(\n\t\tconfig.RpcConfig.UserServiceName, // 要找的服务的名字\n\t\tclient.WithResolver(r), //核心是这个\n\t\tclient.WithSuite(tracing.NewClientSuite()),\n\t\tclient.WithClientBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: config.ServerConfig.ServiceName}), //自己这个服务的名字\n\t)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\treturn userClient\n}\n\n```\n",
+    "categories": [
+      "项目",
+      "即时通讯"
+    ],
+    "tags": [],
+    "publishedAt": "2024-11-04 20:41:30",
+    "sourcePath": "03. 项目/06. 即时通讯/04. kitex 与 hertz 配合使用，实现服务发现链路追踪等功能.md"
+  },
+  {
+    "slug": "db904d",
+    "legacyPermalink": "/pages/db904d/",
+    "title": "git的特殊需求使用技巧",
+    "description": "适用于提交了一次代码之后，发现上次提交还有问题，如果再次提交就会生成两次 commit 记录。",
+    "contentMarkdown": "## 合并多次提交/追加更改\n\n### 适用场景\n\n适用于提交了一次代码之后，发现上次提交还有问题，如果再次提交就会生成两次 commit 记录。\n\n或者是开发了很多小功能有多个 commit，但是只想要一次commit 记录。\n\n### 操作方法\n\n如果是上次提交有错误还要改，就先 commit 一次，然后把最近两次 commit 合并。\n\n假设要合并最近N次提交，有两种方法，第一种先使用`git log`查看最近的提交记录，找到倒数第`N+1`次提交的记录的 id，然后使用`git reset -i [logid]`。第二种更简单直接`git reset -i HEAD~2`。 \n\n这时候会打开一个文本编辑器，展示最近N 次的提交记录，取决于你安装 git 的时候选了什么，可能是 vim 或者 vscode。\n\n![](https://img.peacesheep.xyz/QQ_1730725674881.png)\n\n将除了最上面提交的 `pick` 改为 `s`，然后保存退出文本编辑器。\n\n![](https://img.peacesheep.xyz/QQ_1730725763096.png)\n\n此时会再次打开一个文本编辑器，显示要合并的提交的所有备注，可以把不需要的删掉或者在前面加上`#`注释。\n\n![](https://img.peacesheep.xyz/QQ_1730728026197.png)\n\n再保存退出，这时就已经合并成功了。需要注意的是如果上次 commit 已经 push 到 remote 了，这次需要使用`git push -f`（谨慎使用，如果别人也有提交会把他们的提交直接覆盖！）否则会被拒绝。",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2024-11-04 21:00:34",
+    "sourcePath": "05. 教程/06. 使用技巧/04. git的特殊需求使用技巧.md"
+  },
+  {
+    "slug": "693a03",
+    "legacyPermalink": "/pages/693a03/",
+    "title": "apt-get使用代理",
+    "description": "如果通过export httpsproxy=http://localhost:7890 httpproxy=http://localhost:7890 allproxy=socks5://localhost:7890这种方式设置了代理，对于apt是无效的。",
+    "contentMarkdown": "如果通过`export https_proxy=http://localhost:7890 http_proxy=http://localhost:7890 all_proxy=socks5://localhost:7890`这种方式设置了代理，对于apt是无效的。\n\n解决方法：\n\n1. 直接在 apt 命令中指定代理：\n\n```bash\nsudo apt-get -o Acquire::http::proxy=\"http://localhost:7890\" -o Acquire::https::proxy=\"http://localhost:7890\" install <package-name>\n```\n\n2. 使用 apt 的配置文件设置代理\n\n\n编辑 /etc/apt/apt.conf.d/95proxy 文件（如果不存在则创建）：\n\n```bash\nsudo nano /etc/apt/apt.conf.d/95proxy\n```\n\n\n```\nAcquire::http::proxy \"http://localhost:7890\";\nAcquire::https::proxy \"http://localhost:7890\";\nAcquire::ftp::proxy \"http://localhost:7890\";\n```",
+    "categories": [
+      "常用操作",
+      "常用命令与配置文件"
+    ],
+    "tags": [],
+    "publishedAt": "2024-11-05 23:43:25",
+    "sourcePath": "100. 常用操作/02. 常用命令与配置文件/06. apt-get使用代理.md"
+  },
+  {
+    "slug": "f26317",
+    "legacyPermalink": "/pages/f26317/",
+    "title": "containerd高版本换源，containerd换源无效问题",
+    "description": "无论是GPT 还是直接 google “contained如何换源”得到的结果都是类似于下面的回答，但这是低版本（低于v1.6.16）用的，高版本已经不适用了。用了会发现没有效果。",
+    "contentMarkdown": "无论是GPT 还是直接 google “contained如何换源”得到的结果都是类似于下面的回答，但这是低版本（低于v1.6.16）用的，高版本已经不适用了。用了会发现没有效果。\n\n<!-- more -->\n\n\n修改`/etc/containerd/config.toml`添加类似于下面东西：\n\n```toml\n[plugins]\n \n    [plugins.\"io.containerd.grpc.v1.cri\".registry]\n      # config_path = \"/etc/containerd/certs.d\"\n      config_path = \"\"\n      \n      [plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors]\n        [plugins.\"io.containerd.grpc.v1.cri\".registry.mirrors.\"docker.io\"]\n          endpoint = [\"https://9ebf40sv.mirror.aliyuncs.com\"]\n```\n\n但是这种方法对于高于v1.6.16的 contained 是无效的。新版的方法为：\n\n同样是修改`/etc/containerd/config.toml`，找到`[plugins.'io.containerd.cri.v1.images'.registry]`，把下面的`config_path=''`改为`config_path = '/etc/containerd/certs.d'`。\n\n![](https://img.peacesheep.xyz/QQ_1730990878977.png)\n\n然后如果要配置 docker.io的镜像，就`mkdir -p /etc/containerd/certs.d/docker.io`，如果是别的就把`docker.io`换掉。\n\n在新建出来的文件夹，新建一个文件叫做`hosts.toml`,内容为：\n\n```toml\nserver = \"https://docker.io\"  # 上游地址，如果下面的都失败了就用这个。\n\n[host.\"https://镜像地址 1\"]\n  capabilities = [\"pull\", \"resolve\"]\n```\n\n然后在运行`sudo systemctl restart containerd`和`sudo systemctl daemon-reload `就可以了。\n",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2024-11-07 22:35:37",
+    "sourcePath": "05. 教程/06. 使用技巧/05. contained  高版本换源.md"
+  },
+  {
+    "slug": "f5ee87",
+    "legacyPermalink": "/pages/f5ee87/",
+    "title": "关于traceroute能显示路由但是ping显示No route的bug",
+    "description": "今天被一个问题困扰了很久很久。在pycharm的终端里面，使用traceroute能显示出来到192.168.6.109这个地址的路由，使用netstat -rn | grep 192.168.6.109也能显示出它的路由以及mac地址，但是无论是ping还是用tcp连接，以及在代码里面写的需要连接网络的代码，都显示No route to host。",
+    "contentMarkdown": "今天被一个问题困扰了很久很久。在pycharm的终端里面，使用`traceroute`能显示出来到`192.168.6.109`这个地址的路由，使用`netstat -rn | grep 192.168.6.109`也能显示出它的路由以及mac地址，但是无论是`ping`还是用tcp连接，以及在代码里面写的需要连接网络的代码，都显示`No route to host`。\n\n![](https://img.peacesheep.xyz/20241117205549.png)\n\n<!-- more -->\n\n这让我很震惊，路由表都显示出来了，告诉我`No route to host`？？？想了很久都没有想明白，最后发现是[JetBrains家的IDE在MACOS15上的bug](https://youtrack.jetbrains.com/issue/IDEA-355209)！ 而且暂时没有找到解决方法。\n\n已尝试的解决方案：\n\n有人说可以[改防火墙设置](https://waclaw.blog/macos-firewall-blocking-web-browsing-after-upgrading-to-sequoia/)，但是这个方法对我无效。",
+    "categories": [
+      "教程",
+      "错误解决"
+    ],
+    "tags": [],
+    "publishedAt": "2024-11-17 20:51:19",
+    "sourcePath": "05. 教程/05. 错误解决/04. 关于traceroute能显示路由但是ping显示No route的bug.md"
+  },
+  {
+    "slug": "1d4374",
+    "legacyPermalink": "/pages/1d4374/",
+    "title": "格言",
+    "description": "+ \"Talk is cheap. Show me the code.\" - Linus Torvalds + \"A beautiful demo is worth a thousand words.\" + \"计算机是不会出错的。\" - 蒋炎岩",
+    "contentMarkdown": "+ \"Talk is cheap. Show me the code.\" - Linus Torvalds\n+ \"A beautiful demo is worth a thousand words.\"\n+ \"计算机是不会出错的。\" - 蒋炎岩\n\n",
+    "categories": [
+      "生活"
+    ],
+    "tags": [],
+    "publishedAt": "2024-12-03 19:08:08",
+    "sourcePath": "101. 生活/02. 格言.md"
+  },
+  {
+    "slug": "79a2e2",
+    "legacyPermalink": "/pages/79a2e2/",
+    "title": "使用k8s部署需要gpu的项目",
+    "description": "如果在linux直接安装基础的k8s，是检测不到gpu资源的。表现为使用kubectl describe node，没有nvidia那一行。",
+    "contentMarkdown": "如果在linux直接安装基础的k8s，是检测不到gpu资源的。表现为使用`kubectl describe node`，没有`nvidia`那一行。\n\n\n![](https://img.peacesheep.xyz/20241205000003.png)\n\n<!-- more -->\n\n\n## 安装container-toolkit\n\n[container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)是英伟达开发的和容器交互的东西。可以看官方教程，下面以apt安装为例。\n\n\n\n1. 配置生产存储库：\n\n```bash\ncurl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \\\n  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \\\n    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \\\n    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list\n```\n\n2. 安装：\n\n```bash\nsudo apt-get update\nsudo apt-get install -y nvidia-container-toolkit\n```\n\n\n## 配置容器运行时\n\n有一个配置工具可以直接用，在[参考链接](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-containerd-for-kubernetes)里面也有官方的安装方法。不同的容器运行时安装方法不一样，下文以containerd为例。\n\n\n```bash\nsudo nvidia-ctk runtime configure --runtime=containerd\n```\n\nnvidia-ctk命令修改主机上的/etc/containerd/config.toml文件。该文件已更新，以便 Containerd 可以使用 NVIDIA 容器运行时。\n\n<mark>这里有一个很坑的地方，这个配置文件的修可能有一个地方不生效。</mark>\n\n![](https://img.peacesheep.xyz/20241205002327.png)\n\n这里有两个地方要改，如果第一个位置不是nvidia需要手动改成nvidia。\n\n重新启动容器：\n```bash\nsudo systemctl restart containerd\n```\n\n## 启动gpu插件\n\n\n```bash\nkubectl create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.17.0/deployments/static/nvidia-device-plugin.yml\n```\n\n然后重启kubelet。\n\n```bash\nsudo systemctl restart kubelet\n```\n\n此时可以再用`kubectl describe node`查看一下是否有了gpu资源，如果没有可以使用`kubectl get pod -n kube-system`，找到nvidia开头的容器，然后用`kubectl logs`看一下这个pod的log。\n\n\n\n\n\n::: tip 参考链接\n[调度 GPU](https://kubernetes.io/zh-cn/docs/tasks/manage-gpus/scheduling-gpus/)\n:::\n\n",
+    "categories": [
+      "教程",
+      "操作系统"
+    ],
+    "tags": [],
+    "publishedAt": "2024-12-04 23:53:09",
+    "sourcePath": "05. 教程/03. 操作系统/01. 使用k8s部署需要gpu的项目.md"
+  },
+  {
+    "slug": "ae0701",
+    "legacyPermalink": "/pages/ae0701/",
+    "title": "git常用操作命令",
+    "description": "",
+    "contentMarkdown": "## 设置用户\n\n```\ngit config --global user.email \"\"\ngit config --global user.name \"\"\n```\n\n## 设置代理\n\n```\ngit config --global http.proxy http://127.0.0.1:7890\ngit config --global https.proxy http://127.0.0.1:7890\n```\n\n## 清除代理\n\n```\ngit config --global --unset https.proxy\ngit config --global --unset http.proxy\n```",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2025-02-13 20:40:07",
+    "sourcePath": "05. 教程/06. 使用技巧/06. git常用操作命令.md"
+  },
+  {
+    "slug": "ab99ed",
+    "legacyPermalink": "/pages/ab99ed/",
+    "title": "关于自己域名处理的愚蠢一天",
+    "description": "自己愚蠢的操作不仅造成了经济损失还白费了一天时间。",
+    "contentMarkdown": "自己愚蠢的操作不仅造成了经济损失还白费了一天时间。\n\n![](https://img.peacesheep.xyz/2025/02/298750f158f0fa59cb887e649257c176.png)\n\n\n\n<!-- more -->\n\n## 起因\n\n想着把域名从腾讯云转移到cloudflare，方便管理。之前DNS已经是cf的，用着也没啥问题，但是不知道为什么突然想把域名转移过来，觉得这样方便管理，首先这就要缴费一年域名续费费用。\n\n然后，我想着域名不在腾讯云了，就肯定不用备案了，所以把ICP备案删掉了。\n\n\n## 发现\n\n突然发现，自己的网站前端能访问，后端一直报525错误，然后把cf的代理关掉，改为仅DNS，发现跳转到了腾讯云的备案提示，原来不管域名在哪里，**只要用腾讯云的服务器，就必须备案**！\n\n\n## 重新备案\n\n好吧，那就重新备案吧，从头再来。第一次备案地点选了江苏，但是因为和身份证不一致被驳回了，然后又再次发起了一个备案。这时候又打电话过来，说国外的域名注册商不能备案！能不能一次把话说完，刚刚为什么不说！\n\n## 转移与手误\n\n好吧，那我把域名再转回来。嗯？转不了？域名刚刚转移的60天，转不回去！好吧，这个时候我自己也有点乱，也不知道是故意的还是不小心的，直接把域名删掉了（可能当时想的是可以重新注册？）。意识到自己手滑删了域名后，想着赶紧再注册回来。纳尼？域名处于恢复期，不能重新注册，只能赎回，但是赎回需要很高的费用！\n\n## 重新注册新域名\n\n好吧，旧域名不要了，最后只能重新注册了个新域名，但是想了想，自己在很多地方都用的旧域名，而且做了很多的SEO优化，那这些优化岂不是白费了？\n\n## 尾声\n\n最后的最后，我又支付了赎回费用，把域名赎回了，然后做了个301重定向... 同时，在谷歌和百度的站长平台提交了迁移申请，花了一天时间，花了钱，为自己愚蠢的一天买单...\n\n## 教训\n\n教训就是，任何的删除操作，不仅是文件，例如本次事故的域名，都一定要三思。\n\n想想自己有什么目的，如果没有目的，只要没有负面影响，宁愿留着没用，也不要随便删除。如果有目的，先去查阅资料，删除之后能不能达到自己的目的。\n\n世界上没有后悔药，如果非要说有，那就是money吧...",
+    "categories": [
+      "杂谈"
+    ],
+    "tags": [],
+    "publishedAt": "2025-02-14 19:55:45",
+    "sourcePath": "07. 杂谈/01. 关于自己域名处理的愚蠢一天.md"
+  },
+  {
+    "slug": "cc4db4",
+    "legacyPermalink": "/pages/cc4db4/",
+    "title": "网站域名迁移的百度和谷歌SEO优化",
+    "description": "因为自己的愚蠢操作，导致了原来的域名出了问题，因此需要迁移到新域名。但是这样之前的SEO优化就白做了，因此需要迁移。",
+    "contentMarkdown": "因为自己的[愚蠢操作](/pages/ab99ed/)，导致了原来的域名出了问题，因此需要迁移到新域名。但是这样之前的SEO优化就白做了，因此需要迁移。\n\n<!-- more -->\n\n## 前置操作\n\n首先，需要把原来的域名都通过301重定向到新的域名。如果使用的是cloudflare，需要进入到该域名，然后点击规则，进行配置。\n\n![](https://img.peacesheep.xyz/2025/02/8a694b21cf0db48f0fd00f03dab3528a.png)\n\n\n## 百度\n\n进入[百度站长平台](https://ziyuan.baidu.com/)，先添加新的站点，然后进入旧的站点，选择网站改版即可。\n\n![](https://img.peacesheep.xyz/2025/02/3fafb3f9b24eb3921b854853955f929e.png)\n\n## 谷歌\n\n进入[google-search-console](https://search.google.com/search-console)，先添加新站点，然后选择旧站点，点击设置-地址更改即可。\n\n![](https://img.peacesheep.xyz/2025/02/a176d02acea1cf41cca01a42358fa191.png)",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2025-02-14 20:44:39",
+    "sourcePath": "05. 教程/01. web/04. 网站域名迁移的百度和谷歌SEO优化.md"
+  },
+  {
+    "slug": "b3eacc",
+    "legacyPermalink": "/pages/b3eacc/",
+    "title": "使用腾讯云OSS作为个人网站文件处理的存储库",
+    "description": "在我之前的网站中，文件存储是自己写的，文件保存到服务端本地。这样的弊端很多，占用服务器空间、占用服务器流量、服务器带宽较低且不保证全球访问、难以很想拓展等。为了解决这个问题，我决定把存储单独抽离出来，由腾讯云oss完成。",
+    "contentMarkdown": "在我之前的网站中，文件存储是自己写的，文件保存到服务端本地。这样的弊端很多，占用服务器空间、占用服务器流量、服务器带宽较低且不保证全球访问、难以很想拓展等。为了解决这个问题，我决定把存储单独抽离出来，由腾讯云oss完成。\n\n\n<!-- more -->\n\n\n## 整体介绍\n\n下载文件：\n\n![](https://img.peacesheep.xyz/2025/02/0785e1342aba6c172654db05a3109150.svg)\n\n上传文件：\n\n![](https://img.peacesheep.xyz/2025/02/659928338d66c3727b267e023580232e.svg)\n\n核心就是一个腾讯云的预签名URL。\n\n\n## 预签名URL生成\n\n初始化客户端：\n\n```go\nfunc NewCosClient(conf *config.Config) *cos.Client {\n\tu, _ := url.Parse(conf.CosConfig.Endpoint)\n\tb := &cos.BaseURL{BucketURL: u}\n\tclient := cos.NewClient(b, &http.Client{\n\t\tTransport: &cos.AuthorizationTransport{\n\t\t\tSecretID:  conf.CosConfig.Ak, // 用户的 SecretId，建议使用子账号密钥，授权遵循最小权限指引，降低使用风险。子账号密钥获取可参见 https://cloud.tencent.com/document/product/598/37140\n\t\t\tSecretKey: conf.CosConfig.Sk, // 用户的 SecretKey，建议使用子账号密钥，授权遵循最小权限指引，降低使用风险。子账号密钥获取可参见 https://cloud.tencent.com/document/product/598/37140\n\t\t},\n\t})\n\treturn client\n}\n\n```\n\n其中endpoint我使用了全球加速域名，没有用自定义域名，缺点是不能下载部分特殊格式（例如apk）的文件。  ak和sk建议用子账号的，仅给这个子账号oss的读写权限。\n\n\n生成预签名url：\n\n```go\nfunc (s *FileService) GetSignedUrl(ctx context.Context, method, name string) (string, error) {\n\tsignedURL, err := s.CosClient.Object.GetPresignedURL(ctx, method, name, s.Config.CosConfig.Ak, s.Config.CosConfig.Sk, time.Hour, nil)\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\treturn signedURL.String(), err\n}\n```\n\n其中，如果是上传文件，则method使用PUT（不可以是POST），下载则是GET。这里的签名过期时间用了一小时，因为我的文件都是很小的文件，一小时足够了。如果你的文件较大，需要调大一些，不然下载到一半就会断开连接了。\n\nname是文件的名称，可以带有\"\\\"表示文件夹，例如\"2025\\2\\18\\xxx.jpg\"\n\n## 下载文件名问题\n\n由于后端保存的时候不是按照实际文件名保存的，而是用的uuid，所以前端直接访问url会出现文件名是uuid的情况。\n\n解决方法有一个就是前端使用blob，先把文件下载到一个blob对象，在用实际文件名下载到本地。不过这样有一个问题就是占用内存，而且看不到实际的下载进度。\n\n另外一个办法是查阅[腾讯云OSS文档](https://cloud.tencent.com/document/product/436/7753)看到的。可以通过response-content-disposition请求参数来设置响应中的 Content-Disposition 头部的值。因此对签名函数进行了改进：\n\n```go\nfunc (s *FileService) GetSignedUrl(ctx context.Context, method, ossPath, name string) (string, error) {\n\n\topt := &cos.PresignedURLOptions{\n\t\tQuery: &url.Values{},\n\t\tHeader: &http.Header{},\n\t}\n\tif method == http.MethodGet {\n\t\topt.Query.Add(\"response-content-disposition\", fmt.Sprintf(\"attachment; filename=%s\", name))\n\t\t// 重点是这一行，通过设置返回的Content-Disposition响应头来达到修改下载的文件名的目的。\n\n\t}\n\n\tsignedURL, err := s.CosClient.Object.GetPresignedURL(ctx, method, ossPath, s.Config.CosConfig.Ak, s.Config.CosConfig.Sk, time.Hour, opt)\n\tif err != nil {\n\t\treturn \"\", err\n\t}\n\treturn signedURL.String(), err\n}\n\n```\n",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2025-02-18 16:09:51",
+    "sourcePath": "05. 教程/01. web/05. 使用腾讯云OSS作为个人网站文件处理的存储库.md"
+  },
+  {
+    "slug": "9acbe8",
+    "legacyPermalink": "/pages/9acbe8/",
+    "title": "Review-Enhanced Hierarchical Contrastive Learning for Recommendation",
+    "description": "数据稀疏，少部分人给少部分商品评分 仅依赖评分的高低来建模用户偏好和商品特征是不够的",
+    "contentMarkdown": "# 一、intro\n\n## 1. 仅基于评分的推荐系统的问题\n\n*   数据稀疏，少部分人给少部分商品评分\n*   仅依赖评分的高低来建模用户偏好和商品特征是不够的\n\n近年来，研究者提出了基于评论的推荐方法，通过NLP从评论中提取信息，从而更好地建模用户偏好。\n\n## 2.现有基于评论的推荐系统中的问题\n\n### 不完整的关系提取： \n\n现有基于评论的系统主要有两种：\n\n1.  要么只从词的级别考虑，从评论中中提取关键词或主题，偏向于图结构\n2.  要么尝试捕获评论中的隐含语义，试图理解用户或物品之间的上下文关系，偏向于NLP\n\n然而，现有的方法往往只关注其中一种，而忽略了用户生成的评论同时包含主题和语义信息。\n\n###   冗余的评论信息：\n\n       评论文本可以提供用户兴趣的详细描述，但也常常包含大量冗余或重复的信息。这些冗余信息在提取评论知识时可能会引入不必要的噪声，影响推荐系统的效果。现有系统缺乏对这种冗余信息的特殊处理\n\n### 一致的行为交互\n\n       在同一时间段内，评分和评论提供了互补的信号，它们之间存在行为上的关联，这些关联可以用来生成更鲁棒和交互性更强的embeddings。然而，现有的推荐系统缺乏对这种关联的深入探索。\n\n## 3.作者的方法\n\n为了解决上述问题，作者提出了一种基于图形的评论增强的层次对比学习方法\n\n1.  ### 主题图和语义图使用LDA提取关键词主题，使用BERT提取评论语义信息，构成两种用户向量，然后通过计算相似性来决定用户之间是否连边，从而构建两张图\n\n2.  ### 跨试图对比学习认为两种视图中都是邻居的为正样本，其他为负样本，进行对比学习\n\n3.  ### 跨模式对比学习最小化评分和评论之间的相似性。使用一个投影函数，把评分和评论变成结构相同的向量，然后对同一个人的评分和评论进行对比学习\n\n# 二、method\n\n## 1. 图结构与编码\n\n### 主题图构建\n\n把用户的所有评论拼接在一起，使用LDA从评论中提取top-k个主题，将有相同主题的用户连接，商品同理。\n\n### 语义图\n\n首先，使用Siamese BERT网络来编码用户的评论。通过平均操作和最大池化，从用户的评论中生成语义嵌入。\n\n计算两个用户嵌入之间的余弦相似度来度量用户之间的语义关系。基于计算出的用户相似度，选择相似度最高的前Q对用户，构建用户-用户语义图。类似地，也可以构建物品-物品语义图。\n\n### 图编码\n\n对初始图使用lightGCN。（初始图是什么？）\n\n## 2.跨视图对比学习\n\n### 基于embedding的数据增强\n\n先过一个batchnorm，再过一个dropout\n\n### 对比学习损失函数\n\n使用**InfoNCE**（Noise Contrastive Estimation）损失函数\n\n### 正样本对\n\n1.  不同视图的同一个用户\n\n2.  不同视图中均有边的邻居的用户\n\n## 3.跨模式对比学习\n\n把基于主题的特征和基于语义的特征拼接起来，得到用户的总的评论表示。通过“LightGCN” 编码用户-商品交互矩阵，得到用户的评分表示。\n\n使用MLP把评分表示投影到评论表示，最大化统一用户二者的相似度。\n\n## 4. 预测任务\n\n把两种模式再拼接到一起得到用户和商品的最终表示，用户向量和商品向量的内积表示向量y，使用贝叶斯个性化排序算法得到预测损失（就是对于u,i,j，如果u和i有交互和j没有交互，则最大化y_ui和y_uj的差距。\n\n最终的损失函数是预测任务误差+跨视图对比学习+跨模式对比学习\n\n# 三、实验\n\n## 数据集：亚马逊\n\n## 三个广泛使用的指标：HIR比（HR），平均值等级（MRR）和归一化的折扣累积增益（NDCG）。\n\n1.  **Hit Ratio (HR，命中率)**\n\n    *   **定义**: 衡量推荐列表中包含用户真实偏好项目的比例\n    *   **示例**: 若用户最终点击了推荐Top10中的3个商品，则HR\\@10=3/10=30%\n    *   **意义**: 评估推荐系统的覆盖能力\n\n2.  **Mean Reciprocal Rank (MRR，平均倒数排名)**\n\n    *   **定义**: 第一个正确推荐项排名的倒数均值\n    *   **公式**: MRR = (1/rank₁ + 1/rank₂ + … +1/rankₙ)/n\n    *   **特性**: 强调高质量推荐应位于前列（如排名第1得1分，第2得0.5分）\n\n3.  **Normalized Discounted Cumulative Gain (NDCG，归一化折损累积增益)**\n\n    *   **创新点**: 同时考虑推荐排序和项目相关性\n    *   **计算特点**:\\\n        • 给高排名位置赋予更高权重\\\n        • 对项目相关度进行贴现处理（log折损）\\\n        • 通过理想排序结果进行归一化\n\n## 对比方法\n\nrating-GNN rating-GCL …",
+    "categories": [
+      "论文阅读",
+      "图",
+      "对比学习"
+    ],
+    "tags": [],
+    "publishedAt": "2025-02-23 16:42:51",
+    "sourcePath": "06. 论文阅读/02. 图/01. 对比学习/01. Review-Enhanced Hierarchical Contrastive Learning for Recommendation.md"
+  },
+  {
+    "slug": "f85012",
+    "legacyPermalink": "/pages/f85012/",
+    "title": "关于C++循环体没有可观察行为被编译器优化而导致的BUG",
+    "description": "在写题目283. 移动零的时候遇到的，仅仅是一个cout就会导致一个if条件的变化。",
+    "contentMarkdown": "在写题目[283. 移动零](https://leetcode.cn/problems/move-zeroes/description/)的时候遇到的，仅仅是一个cout就会导致一个if条件的变化。\n\n<!-- more -->\n\n\n## 问题描述\n\n如果运行下面的代码，会得到“超出时间限制”。\n\n```cpp\nclass Solution {\npublic:\n    void moveZeroes(vector<int>& nums) {\n        size_t p1=0;\n        while(true)\n        {\n            cout<<endl;\n            if(  (p1==nums.size()) || (nums[p1]==0) )\n            {\n                cout<<\"ABC\"<<endl;\n                break;\n            }\n        }\n    }\n};\n\n```\n\n![](https://img.peacesheep.xyz/2025/03/1017546744d07ec9fce5533b5ed7b93f.png)\n\n\n如果运行下面的代码（仅仅是把cout << endl注释），所有样例会输出\"ABC\"并且break（比如样例4的输入是[2,1]也会break）。\n\n```cpp\nclass Solution {\npublic:\n    void moveZeroes(vector<int>& nums) {\n        size_t p1=0;\n        while(true)\n        {\n            //cout<<endl;\n            if(  (p1==nums.size()) || (nums[p1]==0) )\n            {\n                cout<<\"ABC\"<<endl;\n                break;\n            }\n        }\n    }\n};\n\n```\n\n![](https://img.peacesheep.xyz/2025/03/4370b0729090d8f95684b547c58b946e.png)\n\n为什么只是加了一个cout就会导致结果不同？if条件应该是false。怀疑和编译器优化有关？\n\n最神奇的是，在if里面把if的条件输出是0。\n\n![](https://img.peacesheep.xyz/2025/03/1abcae6ec7b354dca3f19aed23708540.png)\n\n## 尝试的可能\n\n1. if后面多加了分号导致if自己变成了一条语句？\n\n仔细检查了下并没有多加。\n\n2. 有内存越界等UB行为？\n\n看了下感觉没有？如果`nums.size()`是0，由于短目性会直接条件为真，也就不会访问到`nums[p1]`这个位置。\n\n## 原因（不完全确定）\n\n\n\n根据[知乎](https://www.zhihu.com/question/584511699)、[github有关llvm的issue](https://github.com/llvm/llvm-project/issues/60622)，基本可以确定是编译器优化导致的，可以认为是编译器的BUG。\n\n根据C++ ISO标准规定，如果一个死循环内部没有“可观察行为”，则允许编译器将其删除从而进行优化。\n\n假设这个循环被编译后这条指令的入口地址是A，里面有一个if，编译的时候if里面的内容编译后的入口地址报放到了循环的后面，假设是地址B，if成功会跳转到这个地址B执行。  \n\n巧合的是，B正好在A的下面，也就是B=A+1。\n\n理论上的表现应该是，运行到A，进入循环体，if不成立，因为while从而跳回到A，这样往复死循环。\n\n但是编译器把这个空循环优化了，导致pc跳过循环直接跑到了循环下面，也就是从A直接运行到了A+1。而此地址A+1正好是本来应该if跳转的位置B，也就是if里面的内容，所以表现就是运行了if里面的东西，实际上是因为运行的时候跳过了这个循环，直接跑到了这个本应该是if跳转过来的地址。\n\n",
+    "categories": [
+      "杂谈"
+    ],
+    "tags": [],
+    "publishedAt": "2025-03-12 00:06:39",
+    "sourcePath": "01. 语言/01. C++/02. 关于C++循环体没有可观察行为被编译器优化而导致的BUG.md"
+  },
+  {
+    "slug": "a2a595",
+    "legacyPermalink": "/pages/a2a595/",
+    "title": "LLM聚合平台客户端对比",
+    "description": "尝试了一些LLM的客户端，但是目前没有找到一个完美的。",
+    "contentMarkdown": "尝试了一些LLM的客户端，但是目前没有找到一个完美的。\n\n<!-- more -->\n\n| 名称 | webdav同步历史消息 | 联网搜索 |\n| :--: | :--: | :--: |\n| [nextchat](https://github.com/ChatGPTNextWeb/NextChat) | ✅ | ❌ |\n| [chatbox](https://github.com/chatboxai/chatbox) | ❌| ✅ | \n| [cherry-studio](https://github.com/CherryHQ/cherry-studio) | ✅ | 部分支持，仅支持tavily，Exa，searexng，前两个需要API超过限制要充钱，后面一个要自己部署 |\n\n目前没有找到一个能完美支持所有功能的，如果有知道的朋友希望可以帮忙推荐下。",
+    "categories": [
+      "杂谈"
+    ],
+    "tags": [],
+    "publishedAt": "2025-03-29 22:43:13",
+    "sourcePath": "07. 杂谈/02. LLM客户端对比.md"
+  },
+  {
+    "slug": "72def6",
+    "legacyPermalink": "/pages/72def6/",
+    "title": "使用cloudflare-r2搭建webdav",
+    "description": "主要使用的是FlareDrive这个项目。",
+    "contentMarkdown": "主要使用的是[FlareDrive](https://github.com/longern/FlareDrive)这个项目。\n\n## 前提条件\n\n+ 有一个cf账号\n+ cf账号添加了付款方式\n\n## 部署方法\n\n1. fork仓库到自己的github一份。\n2. cloudflare点pages，然后点创建。\n\n![](https://img.peacesheep.xyz/2025/04/670d91a96427aefda98c04ab32e7a609.png)\n\n3. 点pages，点连接到Git，然后找到你fork的FlareDrive项目并确定。\n\n![](https://img.peacesheep.xyz/2025/04/19da0d8fdacc307e131111ef1dca1482.png)\n\n4. 随便取一个名字，然后框架预设选择Docusaurus，下方添加环境变量 `WEBDAV_USERNAME` 和 `WEBDAV_PASSWORD`，分别是你的webdav的用户名和密码，点保存并部署。\n\n![](https://img.peacesheep.xyz/2025/04/78b2716e3e5cbd0b191094c679757c2c.png)\n\n5. 点R2创建一个存储桶。\n\n6. 进入刚刚部署的pages的设置，绑定创建的存储桶，其中变量名称写`BUCKET`。\n\n![](https://img.peacesheep.xyz/2025/04/a4c53dbe7700453132286cb22fdb0e4e.png)\n\n7. 进入部署页面，选择管理部署，重试部署。\n\n\n## 完成\n\n现在webdav已经部署好了，地址就是你的pages的url，加上`/webdav`。账号密码就是一开始设置的环境变量 `WEBDAV_USERNAME` 和 `WEBDAV_PASSWORD`，如果有需要也可以添加一个自己的url。",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2025-04-08 19:11:49",
+    "sourcePath": "05. 教程/01. web/06. 使用cloudflare-r2搭建webdav.md"
+  },
+  {
+    "slug": "76eda0",
+    "legacyPermalink": "/pages/76eda0/",
+    "title": "ubuntu安装g++显示已有但是输入g++又找不到命令",
+    "description": "用sudo apt-get install g++来安装g++，系统却说g++已经是最新版本了，但是用g++ -v查看又提示需要安装 g++，使用sudo apt-get install build-essential也提示已经安装。",
+    "contentMarkdown": "## 问题\n\n用`sudo apt-get install g++`来安装g++，系统却说g++已经是最新版本了，但是用`g++ -v`查看又提示需要安装 g++，使用`sudo apt-get install build-essential`也提示已经安装。\n\n## 解决办法\n\n```bash\nls /usr/bin/gcc*\n```\n\n看一下是不是有好几个版本，也就是最后一个数字有好几个，比如有7,8,9等。把其他的卸载了只留一个最新的就行，例如：\n\n```\nsudo apt-get remove gcc\nsudo apt-get remove gcc-7\nsudo apt-get remove gcc-8\n```\n\n这样只会留下9，再用`sudo apt-get install g++`安装就有了。\n\n::: tip 参考链接\n[Ubuntu 20.04 下g++用不了,但是提示已经安装](https://blog.csdn.net/wuli_xin/article/details/131454093)\n:::\n",
+    "categories": [
+      "教程",
+      "错误解决"
+    ],
+    "tags": [],
+    "publishedAt": "2025-04-15 18:48:38",
+    "sourcePath": "05. 教程/05. 错误解决/05. ubuntu安装g++显示已有但是输入g++又找不到命令.md"
+  },
+  {
+    "slug": "c79309",
+    "legacyPermalink": "/pages/c79309/",
+    "title": "愚蠢错误收集",
+    "description": "有时候，总是因为一个愚蠢的很小很小的错误导致自己浪费了很多时间，回过神了很想给自己一巴掌...",
+    "contentMarkdown": "有时候，总是因为一个愚蠢的很小很小的错误导致自己浪费了很多时间，回过神了很想给自己一巴掌... \n\n为了避免同样的错误再犯，在这里把自己犯过的小错误记录下来。\n\n<!-- more -->\n\n1. 设置环境变量不能加双引号\n   \n![](https://img.peacesheep.xyz/2025/05/28e00c84da6e5eafff85767fe92a1ff1.jpg)\n\n开发某个项目使用github的Oauth认证登录，结果接口一直404。经过搜索发现如果`secret_key`错误就会404，在我的项目中，sk是通过设置变量得到的。\n\n然后我开始了不断的删除新建sk，重新设置环境变量，但是一直还是404，最后发现自己设置环境变量的时候不小心加了个双引号，导致双引号也成为了sk的一部分...\n\n\n\n",
+    "categories": [
+      "杂谈"
+    ],
+    "tags": [],
+    "publishedAt": "2025-05-29 00:35:29",
+    "sourcePath": "07. 杂谈/03. 愚蠢错误收集.md"
+  },
+  {
+    "slug": "a8d914",
+    "legacyPermalink": "/pages/a8d914/",
+    "title": "前端概念梳理",
+    "description": "刚写前端的时候，总觉得有很多概念不清楚，也不清楚他们之间的关系，例如vue、vite、rollup的关系是什么？在这里把所有的概念梳理一下，方便新入门前端的同学。",
+    "contentMarkdown": "刚写前端的时候，总觉得有很多概念不清楚，也不清楚他们之间的关系，例如vue、vite、rollup的关系是什么？在这里把所有的概念梳理一下，方便新入门前端的同学。\n\n<!-- more -->\n\n## nodejs\n\n首先，前端最最核心的一个东西是nodejs。 \n\n想象一下，你写了一段js代码，需要运行，如果在chrome浏览器里面，这些代码的运行是交给chrome的V8引擎。在浏览器之外，就可以使用nodejs。\n\njs并非只有在网页上使用这一个唯一的场景，例如也可以写后端。\n\n## 包管理工具：npm、yarn、pnpm\n\n\n有了 Node.js，我们就能在电脑里离开浏览器运行 JavaScript。可是光有引擎还不够，前端生态的“依赖包”（比如别人写好的库）要怎么领进来、管理好？这就要用到包管理工具了，就像python有pip，Rust有Cargo，node也有自己的包管理器，而且不仅有还有三个：\n\n1. npm\n\nNode.js 官方自带的包管理工具，也是最传统的选择。优点是绝大多数项目都支持，缺点是很慢。\n\n2. yarn\n  \nyarn是Facebook 推出来的包管理器，解决 npm 早期的速度/一致性问题。yarn有多个版本，其中v1用法和 npm 很像，但是速度更快，依赖锁定机制也更好一些。\n\n但是，v1版本用起来和npm很像，也就注定它必然有npm的缺点，例如巨大的粪坑`node_modules`文件夹。为了解决这个问题，yarn后续版本已经退出了pnp的依赖管理模式，使用一个压缩包而不是`node_module`文件夹管理依赖。\n\nyarn1已经停止更新，最新的版本停在了1.22.22.截止本文撰写，yarn最新大版本是4，但是经过笔者实际尝试，目前yarn4与现有项目适配较差，尤其是使用vite+vue的项目，报错很多基本无法正常运行。\n\n3. pnpm\n   \n一个后来者，优势是更加节省硬盘空间（通过硬链接的方式管理依赖包），在 monorepo 多包项目里尤其有优势。由于笔者本人用的较少，这里就不多说了。\n\n三者都能完成“下载安装第三方库、管理版本、清理依赖”等任务。\n\n## 构建工具：Vite, Webpack\n\n先把“构建”说清楚：核心是“把源码（TS/ESNext、Vue SFC、JSX、CSS 预处理、图片等）转换成浏览器能高效执行/加载的产物，并在开发期提供快速反馈（热更新/HMR）”。\n\nVite 和 Webpack 都能负责“开发体验 + 产物输出”，但理念不同：\n\n1. Webpack（老牌全家桶）\n  - 思路：一切资源皆模块，先分析整张依赖图，再整体打包（bundle）后交给浏览器。\n  - 优点：生态巨无霸，loader / plugin 唯一性需求几乎都能找到；历史兼容性强；可深度自定义。\n  - 缺点：初次构建、频繁改动重构建慢；配置项多，新手门槛高。\n2. Vite（开发体验优先）\n  - Dev 阶段不做整包：利用浏览器原生 ESM 按需加载源码，只对“非原生语法”（TS、Vue、JSX）做按需瞬时转换，这个转换用 esbuild（Go 写的，极快）。\n  - Build 阶段再交由 Rollup 做优化（tree-shaking、代码分割、压缩）。所以 Vite 实际是：Dev Server (esbuild 预处理) + Rollup 打包的组合壳。\n  - 优点：启动秒开，HMR 快；默认配置即够用；贴合现代语法与框架。\n  - 缺点：极端或历史复杂场景的深度定制仍不如 Webpack 生态丰富；某些老式脚本处理需额外兼容。\n\n一句话：Webpack 偏“先打好包再服务”；Vite 偏“先服务（原生 ESM）再最终打包”。新项目追求体验 → Vite；遗留/复杂构建链条 → Webpack 仍然稳。\n\n（注意：很多人把 Vite 叫“构建工具”，而把底层的 esbuild/Rollup 叫“打包工具”，下面分开讲。）\n\n## 打包工具：esbuild, rollup, webpack\t\n\n“打包”聚焦在：解析依赖图 -> 合并/拆分 -> 优化（摇树/压缩）-> 输出浏览器或 Node 可直接部署的 bundle/chunk。\n\n1. esbuild\n  - 特点：Go 实现，多线程 + 流式处理，速度极快（数量级差距）。\n  - 常用场景：开发期预构建、脚手架、内部工具、对最终体积要求一般但追求极致速度的任务。\n  - 相对不足：高级代码分割策略、生态深度（复杂插件链）不及 Rollup / Webpack。\n2. Rollup\n  - 特长：面向 ESM，tree-shaking 精细，输出干净，适合做“库”（产出 ESM/CJS/UMD 多格式）。\n  - 缺点：做复杂应用需额外插件拼装，不如 Webpack “一口气全解决”。\n3. Webpack\n  - 既能打包也有 dev server；资源类型覆盖和历史方案兼容能力极强。\n  - 仍在大型单页、多入口、旧代码迁移中发挥价值。\n\n典型组合：\n  - Vite (dev) -> Rollup (build)，内部用 esbuild 预构建依赖 / 转换 TS。\n  - 只用 esbuild：快速产出一个临时或内部工具包。\n  - 传统：只用 Webpack 贯穿全流程。\n\n速记：esbuild=极速，Rollup=做库/极致 tree-shaking，Webpack=大而全，Vite=体验编排层（调度 esbuild + Rollup）。\n\n## UI框架：Vue, React, Angular\t\n\n都是“写界面”，定位与哲学差异很大：\n\n1. Vue（渐进式）\n  - 渐进：可以只用视图层，也可加路由、状态、构建工具逐步变“全家桶”。\n  - 单文件组件（SFC）+ 响应式系统（3.x 用 Proxy 追踪依赖），语法直观，上手快。\n  - 场景：中小到中大型业务快速开发。\n2. React（UI 库）\n  - 聚焦 state -> UI 映射，其他由生态自由组合（Router、状态、数据请求、构建方案）。\n  - 函数式 + Hooks，灵活度高；也更容易写出“过度抽象”或性能细节坑。\n  - 场景：需要高度定制、跨端（React Native/Electron）、基建成熟团队。\n3. Angular（企业级框架）\n  - 自带：依赖注入、路由、表单、HTTP、CLI、严格结构；TypeScript 强绑定。\n  - 观念/概念多（Module/Component/Service/DI/RxJS），学习成本高，换来架构统一与长期可维护性。\n  - 场景：大型后台、长期迭代、团队需要统一规范。\n\n一句话：想快上手 → Vue；想灵活按需拼 → React；想自带完整架构 → Angular。\n\n旁支：Svelte / Solid / Qwik 等“新一代”值得关注，但先把主流三件套吃透即可。\n\n## 模块化规范：ESM, CommonJS, AMD\t\n\n为什么有这么多规范？历史演进：浏览器最初没有模块机制 -> 社区想方案（AMD）；Node 为服务器端需要（CommonJS）；最终标准委员会推出官方（ESM）。\n\n1. CommonJS (CJS)\n  - 写法：`const a = require('a'); module.exports = ...`\n  - 特点：同步加载（适合服务端文件系统），导出是对象引用（修改导出对象属性可被后续 require 看到）。\n  - 地位：Node 旧项目大量存在，仍被支持。\n2. AMD\n  - 写法：`define(['dep'], function(dep){ ... return api })`。\n  - 目的：浏览器异步加载，解决网络延迟阻塞。代表：RequireJS。现代新项目基本不直接写。\n3. ESM (ECMAScript Module)\n  - 写法：`import { x } from './x.js'; export default {...}`\n  - 特点：静态可分析（构建优化/摇树更精准），浏览器原生支持 `<script type=\"module\">`，live binding（实时绑定）。\n\n补充：\n  - UMD：打包层面为兼容（CJS + AMD + 全局）包装一层，常见于发布库。\n  - IIFE：早期用立即执行函数隔离作用域的“伪模块”。\n  - 互操作：ESM 导入 CJS 得到默认整个模块对象；CJS require ESM 受 Node 版本、`package.json` 中 `type` 字段限制；打包工具负责大量兼容“魔法”。\n  - Node 通过 `\"type\": \"module\"` 或后缀 `.mjs / .cjs` 区分。\n\n心智图：CJS=Node 老世界；AMD=浏览器历史异步方案；ESM=现在与未来。理解历史后，新代码尽量直接写 ESM。\n\n（打包工具的价值之一：把多种模块来源统一成浏览器高效可加载的最终形式。）\n\n## 总结：为什么前端看起来这么“杂乱”\n\n不可否认，前端的概念非常多：一个“写页面”的活，怎么冒出包管理器三套、构建工具四五种、框架一堆、模块规范还分好几档？\n\n我自己的理解，可以拆成几个层面：\n\n1. 历史包袱演进叠加\n  - 浏览器最初几乎不提供工程化支持：没有模块、没有类型、没有打包、没有热更新。社区就“缺啥补啥”。\n  - 旧方案不能一下子废：项目还在跑，所以新/旧同时存在（CommonJS 与 ESM、Webpack 与 Vite、npm 与 yarn/pnpm）。\n2. 运行环境碎片化\n  - 目标环境不止“最新 Chrome”，还有：旧浏览器、Node、SSR、Edge Runtime、Electron、Hybrid、微信小程序、各种嵌入 WebView。不同环境限制不同 → 工具需要做 polyfill/转译/适配。\n3. 语言层“迟到的标准化”\n  - JS 标准更新节奏比实战需求慢。社区先造（CoffeeScript、Babel、TypeScript、各种模块格式），等标准慢慢吸收（类、ESM、可选链）。过渡阶段一定“并存 + 迁移”。\n4. 性能与体验军备竞赛\n  - 需求：更快首屏、更少体积、更好 DX（开发体验）。\n  - 不同工具在不同阶段极致：esbuild 拼“速度”，Rollup 拼“输出洁净”，Webpack 拼“全能”，Vite 拼“秒启动”，Snowpack 曾经拼“原生 ESM”概念。竞赛 -> 分化。\n5. 生态开放 + 进入门槛低\n  - JavaScript 进入门槛低，全球开发者多，迭代快；“有人不爽就能起一个新轮子”，再通过 npm 迅速传播。\n6. 需求边界在扩张\n  - 以前只做页面，现在还要：SSR/SSG（Next/Nuxt）、同构渲染、CSR/边缘渲染、实时协作、WebGL/WebGPU、跨端（React Native/Tauri/Flutter Web）、微前端、低代码……每出现一个新场景，就会诞生一批“专用术语 + 新工具”。\n7. 商业与社区驱动并存\n  - 大厂（Meta、Google、阿里、字节、微软）会推出解决自己内部痛点的方案，然后开源推广（React、Angular、Egg、Rspack、Turbopack 等）。它们天然带流量，促使多路线并行。\n8. 旧成本 vs 新收益的摇摆\n  - 工具迁移不是“功能 superset 就换”，还要评估：构建脚本、插件、CI、团队认知、Bug 风险。于是老工具不会立即消亡，形成“代际同住”。\n\n如果用一句模型来概括：\n“前端是需求极快膨胀 + 标准化相对滞后 + 进入门槛低 + 多运行时并存 + 旧项目庞大存量” 的交叉结果。\n\n怎么在杂乱中不被淹：\n  1. 先抓“恒定核心”：HTML/CSS/JS 基础、HTTP、浏览器运行机制（事件循环、渲染、缓存、网络）。\n  2. 再挑“一条主线”：例如 Vue + Vite 或 React + Vite/Next，滚成可交付项目。\n  3. 碰到陌生名词先分类：它是“语法/标准、运行时、框架、构建层、打包层、部署/交付层、性能优化手段、工程组织模型”中的哪一类。\n  4. 定期“低频巡检”：每隔 3~6 个月看看生态有没有新的“范式型”变化（例如：Server Components、Edge Functions、WebGPU）。\n  5. 避免工具驱动学习：带着真实问题选工具，而不是“听说很火先全装一遍”。\n\n最后的心态：\n工具会淘汰，但底层原理（模块划分、依赖图、编译/打包、资源加载、渲染与状态管理、缓存策略）迁移性很高。把注意力放在“为什么需要它”而不是“API 细枝末节”，焦虑感就会下降很多。\n\n这篇博客就是想把那些“看似散乱的名词”压扁成几条主线：运行时（浏览器/Node） -> 模块与依赖 -> 打包/构建链 -> 框架（UI 与状态） -> 交付与性能 -> 生态演化。理解链条后，再遇到新术语，只需要定位它处在链条的哪一段。",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [],
+    "publishedAt": "2025-06-26 00:35:01",
+    "sourcePath": "05. 教程/01. web/07. 前端概念梳理.md"
+  },
+  {
+    "slug": "9ed6ea",
+    "legacyPermalink": "/pages/9ed6ea/",
+    "title": "Live2D AI聊天功能折腾日记：从“僵尸框”到完美交互",
+    "description": "最近在给个人网站加一个基于 LLM 的 AI 看板娘功能。技术栈选了 Next.js + React，看板娘库用了 oh-my-live2d。",
+    "contentMarkdown": "最近在给个人网站加一个基于 LLM 的 AI 看板娘功能。技术栈选了 Next.js + React，看板娘库用了 oh-my-live2d。\n\n本以为调个 API 就完事了，结果在状态管理、组件生命周期和库的默认行为上踩了一下午的坑。特此记录一下这段“折腾”经历，希望能帮到后来人。\n\n随着折腾的深入，会逐渐补充。\n\n<!-- more -->\n\n\n## 背景需求\n\n我的需求中间发生了多次变更和补充，最终我想实现的功能是这样的：\n\n1. 网页右下角有个看板娘。\n\n2. 点击看板娘菜单的“睡觉”，她会消失；为了防止别人压根看不到聊天功能，页面上有一个“星星”按钮，点击页面上的“星星”按钮，她会出来并打开 AI 对话框。\n\n3. 状态要持久化：用户关掉了，刷新页面不能又跳出来。\n\n4. 智能欢迎语：看板娘出来时，要根据时间段打招呼（早上好/晚上好），但如果是点击“星星”唤起的，要说“AI已就绪”。\n\n##  默认欢迎语的“僵尸框”\n\n### 问题\n\n库自带了一个 welcomeTips 功能。我想禁掉它，改用我自己的逻辑：\n\n如果是第一次点进网页，欢迎语需要告诉用户可以点击左侧按钮与我聊天；但如果是点击星星按钮打开的，就不需要再提示用户“欢迎与我聊天”而是直接说“早上好”这种话就够了。\n\n我一开始尝试把文案设为空，但是出现一个空白蓝色框。\n\n再尝试把`duration`设为 0，结果还是会闪一下。\n\n尝试 CSS opacity: 0 ，然后过几秒再调整，这样我自己的聊天框也展示不了而且方法过于丑陋。\n\n### 💡 瞎搞出的奇迹方案\n\n在绝望中尝试把优先级 priority 设为负数，结果......完美解决！库内部应该是过滤掉了负优先级的消息。\n\n```typescript\n\n// 配置里这样写\nwelcomeTips: {\n  priority: -1, // <--- 神之一手，直接让默认欢迎语闭嘴\n},\n\n```\n\n\n\n## React Hooks 的使用规则\n\n### 问题\n\n我想在 Store 的 setInstance 方法里计算欢迎语，结果报了 Invalid hook call。 原因：useTranslation 是 React Hook，不能在 Zustand 的纯函数里调用。\n\n### 解决：职责分离\n\n组件层：负责用 Hooks (useTranslation) 算好要说什么话。\n\nStore 层：只负责接收字符串并执行 instance.tipsMessage()。\n\n\n当然，后来我发现了`onSlideIn`钩子，可以统一直接设置钩子函数，在看板娘入场动画结束后说话，无需在别的地方加一堆判断，这样用户体验更好一些。\n\n\n## 总结\n\n这一通折腾下来，不仅搞定了功能，对前端的生命周期、状态同步有了更深的理解。\n\n+ 不要在 Hook 外面调 Hook。\n\n+ 涉及动画的 UI 库，永远不要相信 setTimeout，要找回调事件。\n\n+ 有时候“瞎搞”（比如 priority: -1）真的能解决大问题。",
+    "categories": [
+      "教程",
+      "web"
+    ],
+    "tags": [
+      "前端",
+      "live2d",
+      "ai聊天"
+    ],
+    "publishedAt": "2026-01-03 20:01:00",
+    "sourcePath": "05. 教程/01. web/08. Live2DAI聊天功能折腾日记.md"
+  },
+  {
+    "slug": "69debb",
+    "legacyPermalink": "/pages/69debb/",
+    "title": "彻底理清 Docker 镜像的 Manifest、Digest 与 Image ID",
+    "description": "在使用 Docker 或镜像仓库（Registry）时，我们经常会碰到一堆看起来差不多的 Hash 值：Index Digest、Manifest Digest、Config Digest、Image ID、RepoDigests……",
+    "contentMarkdown": "# 彻底理清 Docker 镜像的 Manifest、Digest 与 Image ID\n\n## 为什么 Docker 的标识符让人头晕？\n\n在使用 Docker 或镜像仓库（Registry）时，我们经常会碰到一堆看起来差不多的 Hash 值：`Index Digest`、`Manifest Digest`、`Config Digest`、`Image ID`、`RepoDigests`……\n\n如果你不清楚 Docker 镜像的“俄罗斯套娃”结构，就很容易在调试镜像版本或处理多架构（Multi-arch）镜像时感到混乱。\n\n---\n\n## 核心架构：镜像的三层“清单”\n\n要理清这些概念，我们需要从 Registry 返回内容的三个层级来看：\n\n### 1. 第一层：Index（多架构索引）\n\n当你执行 `docker pull <image>:<tag>` 时，Registry 实际上可能返回的是一份 **Index**（也叫 Manifest List）。\n\n* **作用**：它是一个索引，列出了该镜像支持的所有平台（如 `amd64/linux`、`arm64/linux`）。\n* **Index Digest**：对这份索引 JSON 内容计算出的摘要。\n* **RepoDigests**：在执行 `docker images --digests` 时看到的那个 Digest，通常就是这一层。\n\n### 2. 第二层：Image Manifest（单平台清单）\n\n当你（或 Docker 客户端）决定了具体架构（如 `amd64`）后，会根据 Index 里的指示，去拉取对应的 **Manifest**。\n\n* **作用**：这份文件才是“真正”的镜像描述文件，包含了镜像运行所需的两个核心信息：**Config（配置）** 和 **Layers（层）**。\n* **Manifest Digest**：这份 Manifest JSON 本身的摘要。\n\n### 3. 第三层：Config（镜像配置/Image ID）\n\n在 Manifest 中，有一个 `config` 字段，指向一个 JSON 文件（包含环境变量、入口命令、架构信息等）。\n\n* **Image ID**：在 Docker 的定义里，**Image ID 本质上就是 Config 文件的 Digest**。\n* **作用**：它是镜像内容的唯一身份证明。只要 Config 变了，Image ID 就一定会变。\n\n---\n\n## 核心概念对比表\n\n为了直观，我们用一套示例 Hash 来串联：\n\n| 名称 | 示例 Hash | 含义 | 出现位置 |\n| --- | --- | --- | --- |\n| **Index Digest** | `sha256:abcd...` | **多架构索引**的指纹 | `docker images --digests` (RepoDigests) |\n| **Manifest Digest** | `sha256:efgh...` | **单平台清单**的指纹 | Index 文档的 `manifests[].digest` |\n| **Config Digest / Image ID** | `sha256:wxyz...` | **镜像配置**的指纹 | Manifest 的 `config.digest`；`docker images` 的 IMAGE ID |\n\n---\n\n## 完整链路解析\n\n当我们通过标签拉取镜像时，逻辑链路如下：\n\n1. **Tag（标签）**  指向 **Index**（例如 `latest` 对应 `abcd...`）。\n2. **Index**  包含多个 **Manifest Digest**（例如 `amd64` 对应 `efgh...`）。\n3. **Manifest**  包含 **Config Digest**（例如 `wxyz...`）和多个 **Layers**。\n4. **Config Digest**  **Image ID**。\n\n> **关键认知：**\n> 你在请求“标签”时，Registry 告诉你的是第一层 Index 的 Digest。\n> 你在请求“单平台 Manifest”时，看到的是第二层 Manifest 的 Digest 和第三层 Config 的 Digest。\n> **它们分属不同的 JSON 文档，所以 Digest 永远不会交叉出现。**\n\n---\n\n## 给开发者的避坑指南\n\n* **为什么本地 Image ID 和远端不一样？**\n通常是因为你在 Registry 看到的是 `Index Digest`（RepoDigest），而本地 `docker images` 默认显示的是 `Image ID`（Config Digest）。\n* **判断镜像内容是否变化：**\n最可靠的办法是对比 **Image ID**。如果 Image ID 没变，说明镜像的元数据和分层内容完全没有变动。\n* **多架构推送：**\n当你推送一个支持多平台的镜像时，你会产生一个全新的 Index Digest，即使底层的各平台 Manifest 和 Config 并没有变化。\n\n---\n\n## 小结\n\n* **Index Digest** 是“目录”的摘要。\n* **Manifest Digest** 是“具体版本清单”的摘要。\n* **Image ID** 是“配置与内容定义”的摘要。\n\n理清这三层关系，就能在处理镜像同步、CI/CD 触发以及漏洞扫描时，准确地定位到你关心的那个“唯一标识”。",
+    "categories": [
+      "教程",
+      "操作系统"
+    ],
+    "tags": [],
+    "publishedAt": "2026-02-15 17:08:33",
+    "sourcePath": "05. 教程/03. 操作系统/02. 彻底理清 Docker 镜像的 Manifest、Digest 与 Image ID.md"
+  },
+  {
+    "slug": "c43af8",
+    "legacyPermalink": "/pages/c43af8/",
+    "title": "安装sharetex后更换为完整镜像",
+    "description": "由于官方overleaf编译时间限制比较严格，因此很多人会选择手动部署一个自己的sharelatex。",
+    "contentMarkdown": "由于官方overleaf编译时间限制比较严格，因此很多人会选择[手动部署一个自己的sharelatex](https://github.com/overleaf/toolkit/blob/master/doc/quick-start-guide.md)。\n\n但是官方sharetex只包含一些必要的包，编译的时候会遇到很多问题，因此要么安装sharelatex后，进入容器安装所有包；要么是直接用一个完整版镜像。本文采用的是第二种方案。\n\n镜像地址：[https://hub.docker.com/repository/docker/peacesheep/sharelatex-full]([https://hub.docker.com/repository/docker/peacesheep/sharelatex-full)。\n\n但是这又有一个新的问题，我无法保证该镜像永远与最新官方sharelatex同步，因此我写了个[一键构建脚本](https://github.com/li1553770945/sharelatex-full-builder)，你只要把.env中的镜像名称的用户名改成自己的，然后运行sh脚本，即可针对最新的官方sharelatex，构建一个sharelatex-full镜像出来。\n\n此时，只需要在克隆完官方安装脚本之后，把`config/overleaf.rc`中的`OVERLEAF_IMAGE_NAME`改为我的地址`peacesheep/sharelatex-full`或者你自己构建的镜像后，运行`./bin/up`即可。\n\n## 其他问题\n\n1. 上传文件报错413\n\n修改`/etc/nginx/nginx.conf`,在http标签添加`        client_max_body_size 500M;  `即可。",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2026-02-21 00:50:02",
+    "sourcePath": "05. 教程/06. 使用技巧/07. 安装sharetex后更换为完整镜像.md"
+  },
+  {
+    "slug": "b19f32",
+    "legacyPermalink": "/pages/b19f32/",
+    "title": "openclaw使用以来若干问题的拒绝方案",
+    "description": "1. windows上使用start也会弹出cmd窗口。",
+    "contentMarkdown": "1. windows上使用start也会弹出cmd窗口。\n\n是正常现象，如果必须要隐藏，可以将其变成孤儿进程，方法是使用powersehll运行命令:\n\n```powershell\nStart-Process powershell -ArgumentList \"-NoProfile -ExecutionPolicy Bypass -Command `\"openclaw gateway run`\"\" -WindowStyle Hidden\n```\n\n如果要关闭，直接任务管理器找到node进程结束。\n\n2. windows上中文路径乱码。\n\n编码问题，统一使用UTF8就可以了。\n\n1. 打开 控制面板 → 时钟和区域 → 区域\n2. 点击 管理 选项卡\n3. 点击 更改系统区域设置\n4. 勾选 ☑ Beta 版：使用 Unicode UTF-8 提供全球语言支持\n5. 重启电脑\n\n启动的时候使用下面的脚本：\n\n```powershell\nchcp 65001\n[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)\n[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)\n$OutputEncoding = [System.Text.UTF8Encoding]::new($false)\nopenclaw gateway run\n```\n\n3. exec工具无法使用，即便放在tools里面设置了allowlist\n\n必须先改openclaw.json里面的`tools.profile`，如果是`message`，那么就算给exec执行权限也不行，可以改成`coding`或者`full`。\n",
+    "categories": [
+      "教程",
+      "使用技巧"
+    ],
+    "tags": [],
+    "publishedAt": "2026-03-10 16:09:47",
+    "sourcePath": "05. 教程/06. 使用技巧/07. openclaw使用以来若干问题的拒绝方案.md"
+  }
+]

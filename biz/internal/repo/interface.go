@@ -19,6 +19,24 @@ type IRepository interface {
 	SaveAIUsage(usage *domain.AIUsageEntity) error
 	ReserveAIUsageDailyQuota(quotaDay string, identityKey string, ipKey string, limit int) (bool, error)
 	ListAIUsage(userID *uint, startAt *time.Time, endAt *time.Time, model string, channel string) (*[]domain.AIUsageEntity, error)
+	CountBlogPosts() (int64, error)
+	HasBlogMigration(key string) (bool, error)
+	SaveBlogMigration(key string) error
+	FindBlogPostByID(postID uint) (*domain.BlogPostEntity, error)
+	FindBlogPostBySlug(slug string) (*domain.BlogPostEntity, error)
+	FindPublishedBlogPostBySlugOrLegacy(value string) (*domain.BlogPostEntity, error)
+	ListBlogPosts(admin bool, offset, limit int, query, category, tag string) (*[]domain.BlogPostEntity, int64, error)
+	FindBlogRevisionByID(revisionID uint) (*domain.BlogRevisionEntity, error)
+	ListBlogRevisions(postID uint) (*[]domain.BlogRevisionEntity, error)
+	CreateBlogPost(post *domain.BlogPostEntity, revision *domain.BlogRevisionEntity, publish bool) error
+	SaveBlogDraft(postID, baseRevisionID uint, revision *domain.BlogRevisionEntity) (*domain.BlogPostEntity, error)
+	UpdateBlogPostIdentity(postID uint, slug, legacyPermalink string) error
+	PublishBlogPost(postID uint) (*domain.BlogPostEntity, error)
+	SetBlogPostStatus(postID uint, status string) error
+	RemoveBlogPost(postID uint) error
+	SaveBlogAsset(asset *domain.BlogAssetEntity) error
+	FindBlogAssetByID(assetID uint) (*domain.BlogAssetEntity, error)
+	RemoveBlogAsset(assetID uint) error
 
 	FindFileByID(fileID uint) (*domain.FileEntity, error)
 	FindFileByFileKey(fileKey string) (*domain.FileEntity, error)
@@ -75,6 +93,18 @@ func NewRepository(db *gorm.DB) IRepository {
 	}
 	if err := db.AutoMigrate(&domain.AIUsageDailyQuotaEntity{}); err != nil {
 		panic("migrate ai usage daily quota model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogPostEntity{}); err != nil {
+		panic("migrate blog post model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogRevisionEntity{}); err != nil {
+		panic("migrate blog revision model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogAssetEntity{}); err != nil {
+		panic("migrate blog asset model failed: " + err.Error())
+	}
+	if err := db.AutoMigrate(&domain.BlogMigrationEntity{}); err != nil {
+		panic("migrate blog migration model failed: " + err.Error())
 	}
 	if err := db.AutoMigrate(&domain.FileEntity{}); err != nil {
 		panic("migrate file model failed: " + err.Error())

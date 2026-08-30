@@ -5,12 +5,12 @@ package container
 
 import (
 	"github.com/google/wire"
-	"personal-page-be/biz/infra/cache"
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/infra/database"
 	"personal-page-be/biz/infra/log"
 	"personal-page-be/biz/internal/repo"
 	"personal-page-be/biz/internal/service/aichat"
+	"personal-page-be/biz/internal/service/blog"
 	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
@@ -26,7 +26,6 @@ func GetContainer(path string) *Container {
 		//infra
 		config.InitConfig,
 		database.NewDatabase,
-		cache.NewCache,
 		log.NewLogger,
 
 		//repo
@@ -41,6 +40,7 @@ func GetContainer(path string) *Container {
 		project.NewProjectService,
 		slide.NewSlideService,
 		aichat.NewAIChatService,
+		blog.NewBlogService,
 
 		NewContainer,
 	))

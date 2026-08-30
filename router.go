@@ -41,6 +41,18 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.POST("/slides/sign-deck-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideDeckUpload)...)
 	adminApi.POST("/slides/sign-cover-upload", append(middlewire.UserMiddleware(), App.SlideService.SignSlideCoverUpload)...)
 	adminApi.GET("/aichat/stats", append(middlewire.UserMiddleware(), App.AIChatService.GetAdminUsageStats)...)
+	adminApi.GET("/blog/posts", append(middlewire.UserMiddleware(), App.BlogService.ListAdminPosts)...)
+	adminApi.POST("/blog/posts", append(middlewire.UserMiddleware(), App.BlogService.CreatePost)...)
+	adminApi.PUT("/blog/posts/:id/draft", append(middlewire.UserMiddleware(), App.BlogService.SaveDraft)...)
+	adminApi.POST("/blog/posts/:id/publish", append(middlewire.UserMiddleware(), App.BlogService.PublishPost)...)
+	adminApi.POST("/blog/posts/:id/unpublish", append(middlewire.UserMiddleware(), App.BlogService.UnpublishPost)...)
+	adminApi.POST("/blog/posts/:id/archive", append(middlewire.UserMiddleware(), App.BlogService.ArchivePost)...)
+	adminApi.DELETE("/blog/posts/:id", append(middlewire.UserMiddleware(), App.BlogService.DeletePost)...)
+	adminApi.GET("/blog/posts/:id/revisions", append(middlewire.UserMiddleware(), App.BlogService.ListRevisions)...)
+	adminApi.GET("/blog/posts/:id/revisions/:revisionId", append(middlewire.UserMiddleware(), App.BlogService.GetRevision)...)
+	adminApi.POST("/blog/posts/:id/revisions/:revisionId/restore", append(middlewire.UserMiddleware(), App.BlogService.RestoreRevision)...)
+	adminApi.POST("/blog/assets/sign", append(middlewire.UserMiddleware(), App.BlogService.SignAssetUpload)...)
+	adminApi.POST("/blog/assets/:assetId/confirm", append(middlewire.UserMiddleware(), App.BlogService.ConfirmAssetUpload)...)
 
 	fileApi := api.Group("/files")
 
@@ -80,13 +92,18 @@ func customizedRegister(r *server.Hertz) {
 	slidesApi.GET("/:slug/cover", App.SlideService.ServeSlideCover)
 	slidesApi.POST("/:slug/unlock", App.SlideService.UnlockSlide)
 
+	blogApi := api.Group("/blog")
+	blogApi.GET("/posts", App.BlogService.ListPublicPosts)
+	blogApi.GET("/posts/:slug", App.BlogService.GetPublicPost)
+	blogApi.GET("/legacy/:legacy", App.BlogService.GetPublicPost)
+	blogApi.GET("/assets/:assetId", App.BlogService.ServeAsset)
+
+	roomApi := api.Group("/rooms")
+	roomApi.POST("", append(middlewire.UserMiddleware(), App.ChatService.CreateRoom)...)
+	roomApi.POST("/join", App.ChatService.JoinRoom)
+
 	api.POST("/aichat", App.AIChatService.SendMessage)
 	api.GET("/aichat/stats", append(middlewire.UserMiddleware(), App.AIChatService.GetMyUsageStats)...)
-
-	socket := r.Group("/socket")
-	{
-		socket.GET("/new-chat", App.ChatService.CreateChat)
-		socket.GET("/join-chat", App.ChatService.JoinChat)
-	}
+	r.GET("/connect", App.ChatService.Connect)
 
 }

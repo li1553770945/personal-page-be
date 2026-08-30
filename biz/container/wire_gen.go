@@ -7,12 +7,12 @@
 package container
 
 import (
-	"personal-page-be/biz/infra/cache"
 	"personal-page-be/biz/infra/config"
 	"personal-page-be/biz/infra/database"
 	"personal-page-be/biz/infra/log"
 	"personal-page-be/biz/internal/repo"
 	"personal-page-be/biz/internal/service/aichat"
+	"personal-page-be/biz/internal/service/blog"
 	"personal-page-be/biz/internal/service/chat"
 	"personal-page-be/biz/internal/service/file"
 	"personal-page-be/biz/internal/service/global_service"
@@ -33,11 +33,11 @@ func GetContainer(path string) *Container {
 	iFileService := file.NewFileService(iRepository, configConfig, logger)
 	iGlobalService := global_service.NewGlobalService(iRepository, logger)
 	iMessageService := message.NewMessageService(iRepository, configConfig, logger)
-	cacheCache := cache.NewCache()
-	iChatService := chat.NewChatService(cacheCache, logger)
+	iChatService := chat.NewChatService(iRepository, logger)
 	iProjectService := project.NewProjectService(iRepository, iGlobalService, logger)
 	iSlideService := slide.NewSlideService(iRepository, configConfig)
 	iAIChatService := aichat.NewAIChatService(iRepository, configConfig, logger)
-	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService, iProjectService, iSlideService, iAIChatService)
+	iBlogService := blog.NewBlogService(iRepository, configConfig)
+	container := NewContainer(configConfig, iUserService, iFileService, iGlobalService, iMessageService, iChatService, iProjectService, iSlideService, iAIChatService, iBlogService)
 	return container
 }
