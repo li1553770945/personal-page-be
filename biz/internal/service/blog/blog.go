@@ -43,6 +43,7 @@ func (s *BlogService) listPosts(c *app.RequestContext, admin bool) {
 		strings.TrimSpace(c.DefaultQuery("q", "")),
 		strings.TrimSpace(c.DefaultQuery("category", "")),
 		strings.TrimSpace(c.DefaultQuery("tag", "")),
+		normalizeBlogSort(c.DefaultQuery("sort", "pinned")),
 	)
 	if err != nil {
 		response.Error(c, 5001, err.Error())
@@ -195,6 +196,31 @@ func (s *BlogService) UnpublishPost(ctx context.Context, c *app.RequestContext) 
 
 func (s *BlogService) ArchivePost(ctx context.Context, c *app.RequestContext) {
 	s.setStatus(ctx, c, domain.BlogStatusArchived, "已归档")
+}
+
+func (s *BlogService) SetPostPinned(ctx context.Context, c *app.RequestContext) {
+	if _, ok := s.requireSuperAdmin(ctx, c); !ok {
+		return
+	}
+	postID, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+	var req dto.SetBlogPostPinReq
+	if err := c.BindAndValidate(&req); err != nil {
+		response.Error(c, 4001, "请求参数错误: "+err.Error())
+		return
+	}
+	var pinnedAt *time.Time
+	if req.Pinned {
+		now := time.Now()
+		pinnedAt = &now
+	}
+	if err := s.Repo.SetBlogPostPinned(postID, req.Pinned, pinnedAt); err != nil {
+		response.Error(c, 5001, "更新置顶状态失败: "+err.Error())
+		return
+	}
+	response.OK(c, nil, "置顶状态已更新")
 }
 
 func (s *BlogService) setStatus(ctx context.Context, c *app.RequestContext, status, message string) {
@@ -368,6 +394,7 @@ func blogPostToDTO(post *domain.BlogPostEntity, revision *domain.BlogRevisionEnt
 		DatabaseID: post.ID, Slug: post.Slug, LegacyPermalink: post.LegacyPermalink,
 		Status: post.Status, Title: revision.Title, Description: revision.Description,
 		Cover: revision.Cover, Categories: decodeList(revision.Categories), Tags: decodeList(revision.Tags),
+		Pinned:     post.Pinned,
 		RevisionID: revision.ID, Version: revision.Version, ChangeSummary: revision.ChangeSummary,
 		AuthorUsername: revision.AuthorUsername, CreatedAt: post.CreatedAt.Unix(), UpdatedAt: post.UpdatedAt.Unix(),
 		LikeCount: post.LikeCount, CommentCount: post.ApprovedCommentCount,
@@ -412,6 +439,13 @@ func normalizeList(values []string) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+func normalizeBlogSort(value string) string {
+	if strings.EqualFold(strings.TrimSpace(value), "time") {
+		return "time"
+	}
+	return "pinned"
 }
 
 func encodeList(values []string) string {

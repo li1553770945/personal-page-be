@@ -25,7 +25,7 @@ type IRepository interface {
 	FindBlogPostByID(postID uint) (*domain.BlogPostEntity, error)
 	FindBlogPostBySlug(slug string) (*domain.BlogPostEntity, error)
 	FindPublishedBlogPostBySlugOrLegacy(value string) (*domain.BlogPostEntity, error)
-	ListBlogPosts(admin bool, offset, limit int, query, category, tag string) (*[]domain.BlogPostEntity, int64, error)
+	ListBlogPosts(admin bool, offset, limit int, query, category, tag, sortBy string) (*[]domain.BlogPostEntity, int64, error)
 	FindBlogRevisionByID(revisionID uint) (*domain.BlogRevisionEntity, error)
 	ListBlogRevisions(postID uint) (*[]domain.BlogRevisionEntity, error)
 	CreateBlogPost(post *domain.BlogPostEntity, revision *domain.BlogRevisionEntity, publish bool) error
@@ -33,6 +33,7 @@ type IRepository interface {
 	UpdateBlogPostIdentity(postID uint, slug, legacyPermalink string) error
 	PublishBlogPost(postID uint) (*domain.BlogPostEntity, error)
 	SetBlogPostStatus(postID uint, status string) error
+	SetBlogPostPinned(postID uint, pinned bool, pinnedAt *time.Time) error
 	RemoveBlogPost(postID uint) error
 	SaveBlogAsset(asset *domain.BlogAssetEntity) error
 	FindBlogAssetByID(assetID uint) (*domain.BlogAssetEntity, error)

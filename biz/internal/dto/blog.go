@@ -27,6 +27,7 @@ type BlogPostDTO struct {
 	CoverObjectPath     string   `json:"coverObjectPath,omitempty"`
 	Categories          []string `json:"categories"`
 	Tags                []string `json:"tags"`
+	Pinned              bool     `json:"pinned"`
 	DraftRevisionID     uint     `json:"draftRevisionId,omitempty"`
 	PublishedRevisionID uint     `json:"publishedRevisionId,omitempty"`
 	RevisionID          uint     `json:"revisionId,omitempty"`
@@ -62,6 +63,10 @@ type BlogRevisionDTO struct {
 	ChangeSummary   string   `json:"changeSummary"`
 	AuthorUsername  string   `json:"authorUsername"`
 	CreatedAt       int64    `json:"createdAt"`
+}
+
+type SetBlogPostPinReq struct {
+	Pinned bool `json:"pinned"`
 }
 
 type SignBlogAssetReq struct {

@@ -22,6 +22,7 @@ type IBlogService interface {
 	PublishPost(ctx context.Context, c *app.RequestContext)
 	UnpublishPost(ctx context.Context, c *app.RequestContext)
 	ArchivePost(ctx context.Context, c *app.RequestContext)
+	SetPostPinned(ctx context.Context, c *app.RequestContext)
 	DeletePost(ctx context.Context, c *app.RequestContext)
 	ListRevisions(ctx context.Context, c *app.RequestContext)
 	GetRevision(ctx context.Context, c *app.RequestContext)

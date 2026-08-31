@@ -47,6 +47,7 @@ func customizedRegister(r *server.Hertz) {
 	adminApi.POST("/blog/posts/:id/publish", append(middlewire.UserMiddleware(), App.BlogService.PublishPost)...)
 	adminApi.POST("/blog/posts/:id/unpublish", append(middlewire.UserMiddleware(), App.BlogService.UnpublishPost)...)
 	adminApi.POST("/blog/posts/:id/archive", append(middlewire.UserMiddleware(), App.BlogService.ArchivePost)...)
+	adminApi.POST("/blog/posts/:id/pin", append(middlewire.UserMiddleware(), App.BlogService.SetPostPinned)...)
 	adminApi.DELETE("/blog/posts/:id", append(middlewire.UserMiddleware(), App.BlogService.DeletePost)...)
 	adminApi.GET("/blog/posts/:id/revisions", append(middlewire.UserMiddleware(), App.BlogService.ListRevisions)...)
 	adminApi.GET("/blog/posts/:id/revisions/:revisionId", append(middlewire.UserMiddleware(), App.BlogService.GetRevision)...)

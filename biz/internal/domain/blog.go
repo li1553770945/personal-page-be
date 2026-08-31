@@ -24,6 +24,8 @@ type BlogPostEntity struct {
 	DraftRevisionID      uint       `gorm:"index" json:"draft_revision_id"`
 	PublishedRevisionID  uint       `gorm:"index" json:"published_revision_id"`
 	PublishedAt          *time.Time `gorm:"index" json:"published_at"`
+	Pinned               bool       `gorm:"not null;default:false;index" json:"pinned"`
+	PinnedAt             *time.Time `gorm:"index" json:"pinned_at"`
 	ViewCount            int64      `gorm:"not null;default:0" json:"-"`
 	LikeCount            int64      `gorm:"not null;default:0" json:"-"`
 	ApprovedCommentCount int64      `gorm:"not null;default:0" json:"-"`

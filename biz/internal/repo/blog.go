@@ -50,16 +50,17 @@ func (Repo *Repository) FindPublishedBlogPostBySlugOrLegacy(value string) (*doma
 	return &post, err
 }
 
-func (Repo *Repository) ListBlogPosts(admin bool, offset, limit int, query, category, tag string) (*[]domain.BlogPostEntity, int64, error) {
+func (Repo *Repository) ListBlogPosts(admin bool, offset, limit int, query, category, tag, sortBy string) (*[]domain.BlogPostEntity, int64, error) {
 	var posts []domain.BlogPostEntity
 	var count int64
 	db := Repo.DB.Model(&domain.BlogPostEntity{})
+	revisionID := "blog_posts.published_revision_id"
 	if !admin {
 		db = db.Where("status = ?", domain.BlogStatusPublished)
+	} else {
+		revisionID = "CASE WHEN blog_posts.draft_revision_id <> 0 THEN blog_posts.draft_revision_id ELSE blog_posts.published_revision_id END"
 	}
-	if query != "" || category != "" || tag != "" {
-		db = db.Joins("JOIN blog_post_revisions ON blog_post_revisions.id = CASE WHEN blog_posts.status = ? THEN blog_posts.published_revision_id ELSE blog_posts.draft_revision_id END", domain.BlogStatusPublished)
-	}
+	db = db.Joins("JOIN blog_post_revisions ON blog_post_revisions.id = " + revisionID)
 	if query != "" {
 		like := "%" + query + "%"
 		db = db.Where("blog_post_revisions.title LIKE ? OR blog_post_revisions.description LIKE ?", like, like)
@@ -73,7 +74,11 @@ func (Repo *Repository) ListBlogPosts(admin bool, offset, limit int, query, cate
 	if err := db.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
-	err := db.Order("COALESCE(blog_posts.published_at, blog_posts.created_at) DESC").Offset(offset).Limit(limit).Find(&posts).Error
+	order := "blog_posts.pinned DESC, blog_posts.pinned_at DESC, COALESCE(blog_posts.published_at, blog_posts.created_at) DESC, blog_posts.id DESC"
+	if sortBy == "time" {
+		order = "COALESCE(blog_posts.published_at, blog_posts.created_at) DESC, blog_posts.id DESC"
+	}
+	err := db.Order(order).Offset(offset).Limit(limit).Find(&posts).Error
 	return &posts, count, err
 }
 
@@ -163,6 +168,12 @@ func (Repo *Repository) PublishBlogPost(postID uint) (*domain.BlogPostEntity, er
 
 func (Repo *Repository) SetBlogPostStatus(postID uint, status string) error {
 	return Repo.DB.Model(&domain.BlogPostEntity{}).Where("id = ?", postID).Update("status", status).Error
+}
+
+func (Repo *Repository) SetBlogPostPinned(postID uint, pinned bool, pinnedAt *time.Time) error {
+	return Repo.DB.Model(&domain.BlogPostEntity{}).Where("id = ?", postID).Updates(map[string]interface{}{
+		"pinned": pinned, "pinned_at": pinnedAt,
+	}).Error
 }
 
 func (Repo *Repository) RemoveBlogPost(postID uint) error {
